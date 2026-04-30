@@ -1,16 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { logout } from "@/app/actions/auth";
 
-export default function Navbar() {
+interface NavbarProps {
+  session: { userId: string; name: string; email: string } | null;
+}
+
+export default function Navbar({ session }: NavbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    router.refresh();
+  };
 
   const links = [
     { href: "/", label: "หน้าหลัก" },
-    { href: "/shop", label: "ซื้อ-เช่าคอม" },
+    { href: "/products", label: "ซื้อ-เช่าคอม" },
   ];
 
   return (
@@ -45,17 +56,39 @@ export default function Navbar() {
             })}
           </div>
 
-          {/* CTA Button */}
+          {/* CTA Button & Auth */}
           <div className="hidden md:flex items-center gap-3">
-            <Link
-              href="/shop"
-              className="btn-primary text-sm !py-2 !px-4"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
-              </svg>
-              สั่งซื้อเลย
-            </Link>
+            {session ? (
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium text-[var(--accent-cyan)] flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {session.name}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="text-sm text-[var(--text-secondary)] hover:text-red-400 transition-colors"
+                >
+                  ออกจากระบบ
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  เข้าสู่ระบบ
+                </Link>
+                <Link
+                  href="/register"
+                  className="btn-primary text-sm !py-2 !px-4"
+                >
+                  สมัครสมาชิก
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -97,7 +130,7 @@ export default function Navbar() {
               );
             })}
             <Link
-              href="/shop"
+              href="/products"
               onClick={() => setMenuOpen(false)}
               className="block btn-primary text-sm text-center mt-2 !py-3"
             >

@@ -20,18 +20,22 @@ export const metadata: Metadata = {
     "I-Kom ร้านขายและให้เช่าคอมพิวเตอร์คุณภาพสูง ทั้งเกมมิ่ง, แล็ปท็อป, สำนักงาน, เวิร์คสเตชั่น พร้อมระบบ AI ช่วยแนะนำสเปคที่เหมาะกับคุณ ส่งฟรีทั่วประเทศ รับประกัน 3 ปี",
 };
 
-export default function RootLayout({
+import { getSession } from "./actions/auth";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getSession();
+
   return (
     <html
       lang="th"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Navbar />
+        <Navbar session={session} />
         <main className="flex-1">{children}</main>
         <Footer />
       </body>

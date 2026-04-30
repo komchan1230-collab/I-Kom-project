@@ -1,0 +1,112 @@
+// I-Kom Computer Rental System - Database Schema
+// Prisma ORM configured for MySQL
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ==========================================
+// Enums
+// ==========================================
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+}
+
+enum EquipmentStatus {
+  AVAILABLE
+  RESERVED
+  RENTED
+  MAINTENANCE
+}
+
+enum RentalStatus {
+  PENDING
+  ACTIVE
+  RETURNED
+  OVERDUE
+  CANCELLED
+}
+
+// ==========================================
+// Models
+// ==========================================
+
+/// University student user who can rent equipment
+model User {
+  id                   String             @id @default(uuid())
+  email                String             @unique
+  password             String?
+  name                 String?
+  university           String?
+  faculty              String?
+  studentIdCardUrl     String?            @map("student_id_card_url")
+  verificationStatus   VerificationStatus @default(PENDING) @map("verification_status")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  rentals Rental[]
+
+  @@map("users")
+}
+
+/// Product template defining a type of computer available for rent
+model Product {
+  id           String   @id @default(uuid())
+  name         String
+  description  String   @db.Text
+  specs        Json
+  monthlyPrice Decimal  @map("monthly_price") @db.Decimal(10, 2)
+  imageUrl     String?  @map("image_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  equipment Equipment[]
+
+  @@map("products")
+}
+
+/// Individual physical equipment unit with tracking
+model Equipment {
+  id            String          @id @default(uuid())
+  productId     String          @map("product_id")
+  serialNumber  String          @unique @map("serial_number")
+  conditionNote String?         @map("condition_note") @db.Text
+  status        EquipmentStatus @default(AVAILABLE)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  rentals Rental[]
+
+  @@index([productId])
+  @@index([status])
+  @@map("equipment")
+}
+
+/// Rental transaction linking a user to a specific equipment unit
+model Rental {
+  id            String       @id @default(uuid())
+  userId        String       @map("user_id")
+  equipmentId   String       @map("equipment_id")
+  startDate     DateTime     @map("start_date")
+  endDate       DateTime     @map("end_date")
+  depositAmount Decimal      @map("deposit_amount") @db.Decimal(10, 2)
+  status        RentalStatus @default(PENDING)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([equipmentId])
+  @@index([status])
+  @@map("rentals")
+}

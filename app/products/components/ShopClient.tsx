@@ -1,21 +1,48 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { products, categories, searchProducts } from "../components/ProductData";
-import ProductCard from "../components/ProductCard";
-import SearchBar from "../components/SearchBar";
-import ChatBot from "../components/ChatBot";
+import SearchBar from "@/app/components/SearchBar";
+import ChatBot from "@/app/components/ChatBot";
+import { categories } from "@/app/components/ProductData";
+import ProductCard, { MappedProduct } from "./ProductCard";
 
-export default function ShopPage() {
+export default function ShopClient({ products }: { products: MappedProduct[] }) {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [mode, setMode] = useState<"buy" | "rent">("buy");
+  const [mode, setMode] = useState<"buy" | "rent">("rent"); // Default to rent
   const [chatOpen, setChatOpen] = useState(false);
 
-  const filteredProducts = useMemo(
-    () => searchProducts(query, selectedCategory),
-    [query, selectedCategory]
-  );
+  const filteredProducts = useMemo(() => {
+    let filtered = products;
+
+    if (selectedCategory !== "all") {
+      // Very basic mock categorization since DB doesn't have it.
+      // We will just filter by name match for demonstration.
+      if (selectedCategory === "gaming") {
+        filtered = filtered.filter(p => p.name.toLowerCase().includes("gaming") || p.name.toLowerCase().includes("fury") || p.name.toLowerCase().includes("titan"));
+      } else if (selectedCategory === "workstation") {
+        filtered = filtered.filter(p => p.name.toLowerCase().includes("workstation") || p.name.toLowerCase().includes("creator"));
+      } else if (selectedCategory === "laptop") {
+        filtered = filtered.filter(p => p.name.toLowerCase().includes("laptop") || p.name.toLowerCase().includes("swift"));
+      } else if (selectedCategory === "office") {
+        filtered = filtered.filter(p => p.name.toLowerCase().includes("office") || p.name.toLowerCase().includes("lite"));
+      }
+    }
+
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          p.specs.some((s) => s.toLowerCase().includes(q)) ||
+          p.tags.some((t) => t.toLowerCase().includes(q)) ||
+          p.categoryLabel.includes(q)
+      );
+    }
+
+    return filtered;
+  }, [query, selectedCategory, products]);
 
   return (
     <div className="min-h-screen pt-20 pb-16">
