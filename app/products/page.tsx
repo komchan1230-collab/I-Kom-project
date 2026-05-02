@@ -78,15 +78,17 @@ export default async function ProductsPage() {
     }
   });
 
-  // Map database products to the old UI structure
-  const mappedProducts: MappedProduct[] = dbProducts.map(p => {
-    // Basic category inference
+  // Fetch recommended products
+  const { getRecommendedProducts } = await import("@/app/actions/recommendation");
+  const rawRecommended = await getRecommendedProducts();
+
+  // Helper to map DB product to UI product
+  const mapProduct = (p: any): MappedProduct => {
     let categoryLabel = "คอมพิวเตอร์";
     if (p.name.toLowerCase().includes("gaming")) categoryLabel = "เกมมิ่ง";
     else if (p.name.toLowerCase().includes("workstation")) categoryLabel = "เวิร์คสเตชั่น";
     else if (p.name.toLowerCase().includes("laptop")) categoryLabel = "แล็ปท็อป";
 
-    // Format specs
     const specsArray = typeof p.specs === "object" && p.specs !== null 
       ? Object.entries(p.specs).map(([k, v]) => `${k}: ${v}`) 
       : [];
@@ -98,14 +100,17 @@ export default async function ProductsPage() {
       specs: specsArray.length > 0 ? specsArray : ["มาตรฐาน"],
       description: p.description,
       rentPrice: Number(p.monthlyPrice),
-      buyPrice: Number(p.monthlyPrice) * 12 * 1.5, // Dummy buy price calculated from rent
+      buyPrice: Number(p.monthlyPrice) * 12 * 1.5,
       image: p.imageUrl || "/workstation.png",
       tags: ["แนะนำ", "เช่ารายเดือน"],
       isAvailable: p._count.equipment > 0,
       stockCount: p._count.equipment,
       badge: p._count.equipment > 0 ? "hot" : undefined
     };
-  });
+  };
 
-  return <ShopClient products={mappedProducts} />;
+  const mappedProducts: MappedProduct[] = dbProducts.map(mapProduct);
+  const mappedRecommendations: MappedProduct[] = rawRecommended.map(mapProduct);
+
+  return <ShopClient products={mappedProducts} recommended={mappedRecommendations} />;
 }

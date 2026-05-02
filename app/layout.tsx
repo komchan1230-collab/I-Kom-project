@@ -22,6 +22,8 @@ export const metadata: Metadata = {
 
 import { getSession } from "./actions/auth";
 
+import BottomNav from "./components/BottomNav";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -36,8 +38,9 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Navbar session={session} />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 pb-20 md:pb-0">{children}</main>
         <Footer />
+        <BottomNav />
       </body>
     </html>
   );

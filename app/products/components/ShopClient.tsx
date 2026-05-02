@@ -5,12 +5,20 @@ import SearchBar from "@/app/components/SearchBar";
 import ChatBot from "@/app/components/ChatBot";
 import { categories } from "@/app/components/ProductData";
 import ProductCard, { MappedProduct } from "./ProductCard";
+import CheckoutModal from "./CheckoutModal";
 
-export default function ShopClient({ products }: { products: MappedProduct[] }) {
+export default function ShopClient({ products, recommended }: { products: MappedProduct[], recommended?: MappedProduct[] }) {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [mode, setMode] = useState<"buy" | "rent">("rent"); // Default to rent
+  const [mode, setMode] = useState<"buy" | "rent">("rent");
   const [chatOpen, setChatOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<MappedProduct | null>(null);
+
+  const handleRentClick = (product: MappedProduct) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
 
   const filteredProducts = useMemo(() => {
     let filtered = products;
@@ -71,6 +79,30 @@ export default function ShopClient({ products }: { products: MappedProduct[] }) 
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+        
+        {/* Recommended Section */}
+        {recommended && recommended.length > 0 && !query && selectedCategory === "all" && (
+          <div className="mb-16">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-2xl">🌟</span>
+              <h2 className="text-2xl font-bold text-gradient-cyan">แนะนำสำหรับคณะของคุณ</h2>
+            </div>
+            <div className="relative">
+              <div className="absolute -inset-4 bg-[var(--accent-cyan)]/5 rounded-3xl blur-xl pointer-events-none" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+                {recommended.map((product) => (
+                  <div key={product.id} className="relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-blue)] rounded-2xl blur opacity-20 group-hover:opacity-60 transition duration-500"></div>
+                    <div className="relative h-full">
+                      <ProductCard product={product} mode={mode} onRentClick={handleRentClick} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Filters Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           {/* Categories */}
@@ -135,9 +167,9 @@ export default function ShopClient({ products }: { products: MappedProduct[] }) 
 
         {/* Product Grid */}
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} mode={mode} />
+              <ProductCard key={product.id} product={product} mode={mode} onRentClick={handleRentClick} />
             ))}
           </div>
         ) : (
@@ -164,6 +196,14 @@ export default function ShopClient({ products }: { products: MappedProduct[] }) 
 
       {/* ChatBot */}
       <ChatBot isOpen={chatOpen} onToggle={() => setChatOpen(!chatOpen)} />
+
+      {/* Checkout Modal */}
+      <CheckoutModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        product={selectedProduct}
+        mode={mode}
+      />
     </div>
   );
 }

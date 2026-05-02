@@ -23,6 +23,7 @@ enum EquipmentStatus {
   AVAILABLE
   RESERVED
   RENTED
+  SOLD
   MAINTENANCE
 }
 
@@ -31,6 +32,12 @@ enum RentalStatus {
   ACTIVE
   RETURNED
   OVERDUE
+  CANCELLED
+}
+
+enum PurchaseOrderStatus {
+  PENDING_PAYMENT
+  COMPLETED
   CANCELLED
 }
 
@@ -51,7 +58,8 @@ model User {
   createdAt            DateTime           @default(now()) @map("created_at")
   updatedAt            DateTime           @updatedAt @map("updated_at")
 
-  rentals Rental[]
+  rentals        Rental[]
+  purchaseOrders PurchaseOrder[]
 
   @@map("users")
 }
@@ -82,8 +90,9 @@ model Equipment {
   createdAt     DateTime        @default(now()) @map("created_at")
   updatedAt     DateTime        @updatedAt @map("updated_at")
 
-  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  rentals Rental[]
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  rentals       Rental[]
+  purchaseOrder PurchaseOrder?
 
   @@index([productId])
   @@index([status])
@@ -97,8 +106,9 @@ model Rental {
   equipmentId   String       @map("equipment_id")
   startDate     DateTime     @map("start_date")
   endDate       DateTime     @map("end_date")
-  depositAmount Decimal      @map("deposit_amount") @db.Decimal(10, 2)
-  status        RentalStatus @default(PENDING)
+  depositAmount  Decimal      @map("deposit_amount") @db.Decimal(10, 2)
+  paymentSlipUrl String?      @map("payment_slip_url")
+  status         RentalStatus @default(PENDING)
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
@@ -109,4 +119,23 @@ model Rental {
   @@index([equipmentId])
   @@index([status])
   @@map("rentals")
+}
+
+/// Purchase transaction for buying equipment outright
+model PurchaseOrder {
+  id              String              @id @default(uuid())
+  userId          String              @map("user_id")
+  equipmentId     String              @unique @map("equipment_id")
+  totalPrice      Decimal             @map("total_price") @db.Decimal(10, 2)
+  paymentSlipUrl  String?             @map("payment_slip_url")
+  status          PurchaseOrderStatus @default(PENDING_PAYMENT)
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("purchase_orders")
 }

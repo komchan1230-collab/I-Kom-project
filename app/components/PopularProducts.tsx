@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { products } from "./ProductData";
-import ProductCard from "./ProductCard";
+import ProductCard, { MappedProduct } from "../products/components/ProductCard";
 
-export default function PopularProducts() {
-  const popular = products.filter((p) => p.badge === "hot" || p.badge === "new").slice(0, 4);
+interface PopularProductsProps {
+  products: MappedProduct[];
+}
+
+export default function PopularProducts({ products = [] }: PopularProductsProps) {
+  // Take up to 4 products to display as popular
+  const popular = products.slice(0, 4);
 
   return (
     <section className="relative py-24 px-4 sm:px-6 lg:px-8">
@@ -35,7 +39,7 @@ export default function PopularProducts() {
 
         {/* View All Button */}
         <div className="text-center">
-          <Link href="/shop" className="btn-secondary text-lg !py-3 !px-8">
+          <Link href="/products" className="btn-secondary text-lg !py-3 !px-8">
             ดูสินค้าทั้งหมด
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />

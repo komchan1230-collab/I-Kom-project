@@ -338,3 +338,29 @@ body {
 .neon-border:hover::before {
   opacity: 1;
 }
+
+/* ======= Modal Animations ======= */
+@keyframes modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-in {
+  animation: modal-slide-up 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+/* Safe area for bottom nav on notch devices */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

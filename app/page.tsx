@@ -1,13 +1,57 @@
+import prisma from "@/lib/prisma";
 import Hero from "./components/Hero";
 import Features from "./components/Features";
 import PopularProducts from "./components/PopularProducts";
+import { EquipmentStatus } from "@/app/generated/prisma/client";
+import { MappedProduct } from "./products/components/ProductCard";
 
-export default function Home() {
+export default async function Home() {
+  // Fetch up to 4 products with their available equipment count
+  const dbProducts = await prisma.product.findMany({
+    take: 4,
+    include: {
+      _count: {
+        select: {
+          equipment: {
+            where: { status: EquipmentStatus.AVAILABLE }
+          }
+        }
+      }
+    }
+  });
+
+  // Map database products
+  const mappedProducts: MappedProduct[] = dbProducts.map(p => {
+    let categoryLabel = "คอมพิวเตอร์";
+    if (p.name.toLowerCase().includes("gaming")) categoryLabel = "เกมมิ่ง";
+    else if (p.name.toLowerCase().includes("workstation")) categoryLabel = "เวิร์คสเตชั่น";
+    else if (p.name.toLowerCase().includes("laptop")) categoryLabel = "แล็ปท็อป";
+
+    const specsArray = typeof p.specs === "object" && p.specs !== null 
+      ? Object.entries(p.specs).map(([k, v]) => `${k}: ${v}`) 
+      : [];
+
+    return {
+      id: p.id,
+      name: p.name,
+      categoryLabel,
+      specs: specsArray.length > 0 ? specsArray : ["มาตรฐาน"],
+      description: p.description,
+      rentPrice: Number(p.monthlyPrice),
+      buyPrice: Number(p.monthlyPrice) * 12 * 1.5,
+      image: p.imageUrl || "/workstation.png",
+      tags: ["ยอดนิยม"],
+      isAvailable: p._count.equipment > 0,
+      stockCount: p._count.equipment,
+      badge: p._count.equipment > 0 ? "hot" : undefined
+    };
+  });
+
   return (
     <>
       <Hero />
       <Features />
-      <PopularProducts />
+      <PopularProducts products={mappedProducts} />
     </>
   );
 }
