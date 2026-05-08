@@ -290,7 +290,7 @@ export default function AdminTabs({
 
       {/* Inventory Tab */}
       {tab === "inventory" && (
-        <InventoryClient products={inventoryProducts} />
+        <InventoryClient initialProducts={inventoryProducts} />
       )}
 
       {/* Return Confirmation Modal */}
