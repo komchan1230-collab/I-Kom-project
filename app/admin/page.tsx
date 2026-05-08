@@ -107,7 +107,11 @@ export default async function AdminDashboard() {
             endDate: r.endDate.toISOString(),
             status: r.status,
           }))}
-          inventoryProducts={inventoryProducts}
+          inventoryProducts={inventoryProducts.map(p => ({
+            ...p,
+            monthlyPrice: Number(p.monthlyPrice),
+            buyPrice: Number(p.buyPrice),
+          }))}
           approveRental={approveRental}
           rejectRental={rejectRental}
           approvePurchase={approvePurchase}
