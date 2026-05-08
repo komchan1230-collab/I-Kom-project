@@ -9,6 +9,9 @@ export type InventoryProduct = {
   id: string;
   name: string;
   imageUrl: string | null;
+  monthlyPrice: number;
+  buyPrice: number;
+  specs: any;
   counts: {
     AVAILABLE: number;
     RESERVED: number;
@@ -53,12 +56,45 @@ export async function getInventory(): Promise<InventoryProduct[]> {
 
       return {
         ...product,
+        monthlyPrice: Number(product.monthlyPrice),
+        buyPrice: Number(product.buyPrice),
         counts,
       };
     });
   } catch (error) {
     console.error("[Inventory] Failed to fetch inventory:", error);
     return [];
+  }
+}
+
+/**
+ * Updates a product's basic info.
+ */
+export async function updateProduct(
+  productId: string,
+  data: {
+    name?: string;
+    monthlyPrice?: number;
+    buyPrice?: number;
+    specs?: any;
+  }
+) {
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  try {
+    await prisma.product.update({
+      where: { id: productId },
+      data,
+    });
+    revalidatePath("/admin/inventory");
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error: any) {
+    console.error("[Inventory] Failed to update product:", error);
+    return { success: false, error: "เกิดข้อผิดพลาดในการอัปเดตข้อมูลสินค้า" };
   }
 }
 
