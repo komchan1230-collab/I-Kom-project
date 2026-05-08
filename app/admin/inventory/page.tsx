@@ -1,47 +1,32 @@
+import { getInventory } from "@/app/actions/inventory";
 import { getSession } from "@/app/actions/auth";
-import { getInventoryData } from "@/app/actions/inventory";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import InventoryClient from "./InventoryClient";
-
-export const metadata = {
-  title: "Inventory Management | I-Kom Admin",
-};
 
 export default async function InventoryPage() {
   const session = await getSession();
+
   if (!session || session.role !== "ADMIN") {
     redirect("/login");
   }
 
-  const products = await getInventoryData();
+  const inventory = await getInventory();
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative">
-      {/* Background decorations */}
-      <div className="absolute top-1/4 left-0 w-96 h-96 bg-[var(--accent-purple)]/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-0 w-96 h-96 bg-[var(--accent-cyan)]/10 rounded-full blur-[120px] pointer-events-none" />
-
-      <div className="relative z-10">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+    <div className="min-h-screen bg-gray-50 pt-24 pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--accent-cyan)] transition-colors mb-2"
-            >
-              ← Back to Dashboard
-            </Link>
-            <h1 className="text-3xl sm:text-4xl font-bold">
-              Inventory <span className="text-gradient">Management</span>
-            </h1>
-            <p className="text-[var(--text-secondary)] mt-1">
-              จัดการสต็อกสินค้า แก้ไขข้อมูล และดูสถิติความนิยม
-            </p>
+            <h1 className="text-3xl font-bold text-gray-900">จัดการสต็อกและอุปกรณ์</h1>
+            <p className="text-gray-500 mt-1">ตรวจสอบจำนวนสินค้าและจัดการอุปกรณ์รายชิ้น</p>
+          </div>
+          <div className="flex items-center space-x-2 bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-lg">
+            <span className="h-2 w-2 bg-indigo-500 rounded-full animate-pulse"></span>
+            <span className="text-indigo-700 font-medium text-sm">กำลังออนไลน์ในโหมดผู้ดูแลระบบ</span>
           </div>
         </div>
 
-        <InventoryClient products={products} />
+        <InventoryClient initialProducts={inventory} />
       </div>
     </div>
   );

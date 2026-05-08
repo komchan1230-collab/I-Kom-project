@@ -1,507 +1,197 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { formatPrice } from "@/app/components/ProductData";
-import type { InventoryProduct, EquipmentRow } from "@/app/actions/inventory";
-import {
-  updateProduct,
-  addEquipmentStock,
-  removeEquipmentStock,
-} from "@/app/actions/inventory";
+import { useState } from "react";
+import Image from "next/image";
+import { addEquipmentStock, removeEquipmentStock } from "@/app/actions/inventory";
 
-// ─── Inline Editable Cell ───
-function EditableCell({
-  value,
-  onSave,
-  type = "text",
-}: {
-  value: string;
-  onSave: (v: string) => Promise<void>;
-  type?: "text" | "number";
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const [saving, setSaving] = useState(false);
-
-  if (!editing) {
-    return (
-      <span
-        onClick={() => { setDraft(value); setEditing(true); }}
-        className="cursor-pointer hover:bg-white/5 px-2 py-1 rounded-lg transition-colors inline-block min-w-[60px] border border-transparent hover:border-[var(--accent-blue)]/30"
-        title="Click to edit"
-      >
-        {type === "number" ? `฿${formatPrice(Number(value))}` : value}
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center gap-1">
-      <input
-        autoFocus
-        type={type}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={async (e) => {
-          if (e.key === "Enter") { setSaving(true); await onSave(draft); setSaving(false); setEditing(false); }
-          if (e.key === "Escape") setEditing(false);
-        }}
-        className="bg-white/5 border border-[var(--accent-blue)]/50 rounded-lg px-2 py-1 text-sm text-white outline-none focus:border-[var(--accent-blue)] w-full max-w-[160px]"
-        disabled={saving}
-      />
-      <button
-        onClick={async () => { setSaving(true); await onSave(draft); setSaving(false); setEditing(false); }}
-        disabled={saving}
-        className="text-green-400 hover:text-green-300 text-sm font-bold px-1"
-      >{saving ? "..." : "✓"}</button>
-      <button onClick={() => setEditing(false)} className="text-red-400 hover:text-red-300 text-sm font-bold px-1">✕</button>
-    </span>
-  );
-}
-
-// ─── Specs Editor ───
-function SpecsEditor({
-  specs,
-  onSave,
-}: {
-  specs: Record<string, string>;
-  onSave: (s: Record<string, string>) => Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(specs);
-  const [saving, setSaving] = useState(false);
-
-  if (!editing) {
-    return (
-      <div
-        onClick={() => { setDraft({ ...specs }); setEditing(true); }}
-        className="cursor-pointer hover:bg-white/5 px-2 py-1 rounded-lg transition-colors border border-transparent hover:border-[var(--accent-blue)]/30 space-y-0.5"
-        title="Click to edit specs"
-      >
-        {Object.entries(specs).map(([k, v]) => (
-          <div key={k} className="text-xs">
-            <span className="text-[var(--text-muted)]">{k}:</span>{" "}
-            <span className="text-[var(--text-secondary)]">{v}</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-1 p-2 bg-white/5 rounded-lg border border-[var(--accent-blue)]/30">
-      {Object.entries(draft).map(([k, v]) => (
-        <div key={k} className="flex items-center gap-1">
-          <span className="text-[10px] text-[var(--text-muted)] w-16 truncate">{k}</span>
-          <input
-            value={v}
-            onChange={(e) => setDraft({ ...draft, [k]: e.target.value })}
-            className="bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-xs text-white outline-none focus:border-[var(--accent-blue)] flex-1"
-            disabled={saving}
-          />
-        </div>
-      ))}
-      <div className="flex gap-1 pt-1">
-        <button
-          onClick={async () => { setSaving(true); await onSave(draft); setSaving(false); setEditing(false); }}
-          disabled={saving}
-          className="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30 font-bold"
-        >{saving ? "Saving..." : "✓ Save"}</button>
-        <button onClick={() => setEditing(false)} className="text-xs px-2 py-0.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 font-bold">✕</button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Popularity Bar ───
-function PopularityBar({ score, max }: { score: number; max: number }) {
-  const pct = max > 0 ? Math.min((score / max) * 100, 100) : 0;
-  const color = pct > 66 ? "from-red-500 to-orange-400" : pct > 33 ? "from-yellow-400 to-orange-400" : "from-blue-400 to-cyan-400";
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-16 h-2 rounded-full bg-white/5 overflow-hidden">
-        <div className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
-      </div>
-      <span className="text-xs font-bold text-[var(--text-secondary)]">{score}</span>
-    </div>
-  );
-}
-
-// ─── Status Badge ───
-function StatusBadge({ status, count }: { status: string; count: number }) {
-  if (count === 0) return null;
-  const map: Record<string, { bg: string; text: string; icon: string }> = {
-    AVAILABLE: { bg: "bg-green-500/15", text: "text-green-400", icon: "🟢" },
-    RENTED: { bg: "bg-blue-500/15", text: "text-blue-400", icon: "🔵" },
-    RESERVED: { bg: "bg-yellow-500/15", text: "text-yellow-400", icon: "🟡" },
-    SOLD: { bg: "bg-red-500/15", text: "text-red-400", icon: "🔴" },
-    MAINTENANCE: { bg: "bg-gray-500/15", text: "text-gray-400", icon: "⚙️" },
+type ProductWithInventory = {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  counts: {
+    AVAILABLE: number;
+    RESERVED: number;
+    RENTED: number;
+    SOLD: number;
+    MAINTENANCE: number;
   };
-  const s = map[status] || map.AVAILABLE;
-  return (
-    <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${s.bg} ${s.text} font-bold`}>
-      {s.icon} {count}
-    </span>
-  );
-}
+  equipment: any[];
+};
 
-// ─── Add Stock Modal ───
-function AddStockModal({
-  product,
-  onClose,
-}: {
-  product: InventoryProduct;
-  onClose: () => void;
-}) {
-  const [serials, setSerials] = useState([""]);
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+export default function InventoryClient({ initialProducts }: { initialProducts: ProductWithInventory[] }) {
+  const [products, setProducts] = useState(initialProducts);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ProductWithInventory | null>(null);
+  const [serialNumbers, setSerialNumbers] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
 
-  const addField = () => setSerials([...serials, ""]);
-  const updateField = (i: number, v: string) => {
-    const next = [...serials];
-    next[i] = v;
-    setSerials(next);
+  const handleAddStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProduct) return;
+
+    setIsSubmitting(true);
+    const sns = serialNumbers.split("\n").map(s => s.trim()).filter(s => s !== "");
+    
+    const result = await addEquipmentStock(selectedProduct.id, sns);
+    if (result.success) {
+      alert(`เพิ่มสต็อกสำเร็จ: ${result.count} รายการ`);
+      window.location.reload(); // Quick way to refresh server component data
+    } else {
+      alert(result.error);
+    }
+    setIsSubmitting(false);
   };
-  const removeField = (i: number) => setSerials(serials.filter((_, idx) => idx !== i));
 
-  const handleSubmit = () => {
-    setError(null);
-    startTransition(async () => {
-      const result = await addEquipmentStock(product.id, serials);
-      if (result.success) {
-        setSuccess(true);
-        setTimeout(onClose, 1200);
-      } else {
-        setError(result.error || "Failed to add stock.");
-      }
-    });
+  const handleRemoveStock = async (equipmentId: string) => {
+    if (!confirm("คุณต้องการลบอุปกรณ์นี้ใช่หรือไม่? (ลบได้เฉพาะสถานะ AVAILABLE)")) return;
+
+    const result = await removeEquipmentStock(equipmentId);
+    if (result.success) {
+      alert("ลบสต็อกสำเร็จ");
+      window.location.reload();
+    } else {
+      alert(result.error);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-[#0a0a0f] border border-[var(--border-color)] rounded-2xl overflow-hidden shadow-2xl max-w-md w-full mx-4 animate-in">
-        <div className="flex items-center justify-between p-4 border-b border-white/5">
-          <h3 className="font-bold text-white">📦 Add Stock — {product.name}</h3>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors">✕</button>
-        </div>
-        <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
-          {success ? (
-            <div className="text-center py-8">
-              <div className="text-4xl mb-2">✅</div>
-              <p className="text-green-400 font-bold">Stock added successfully!</p>
-            </div>
-          ) : (
-            <>
-              <p className="text-xs text-[var(--text-muted)]">Enter serial numbers for new equipment units. Each unit will be created with AVAILABLE status.</p>
-              {serials.map((s, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    value={s}
-                    onChange={(e) => updateField(i, e.target.value)}
-                    placeholder={`Serial Number #${i + 1}`}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent-cyan)] placeholder:text-[var(--text-muted)] transition-colors"
-                    disabled={isPending}
-                  />
-                  {serials.length > 1 && (
-                    <button onClick={() => removeField(i)} className="text-red-400 hover:text-red-300 text-sm px-1">✕</button>
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สินค้า</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">พร้อมเช่า</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">จองแล้ว</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">เช่าอยู่</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ขายแล้ว</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ซ่อมบำรุง</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200 text-sm">
+              {products.map((product) => (
+                <React.Fragment key={product.id}>
+                  <tr className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0 relative rounded border border-gray-100 overflow-hidden mr-3">
+                          <Image src={product.imageUrl || "/laptop.png"} alt={product.name} fill className="object-cover" />
+                        </div>
+                        <div className="font-medium text-gray-900">{product.name}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 font-bold">{product.counts.AVAILABLE}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center text-gray-500">{product.counts.RESERVED}</td>
+                    <td className="px-6 py-4 text-center text-indigo-600 font-medium">{product.counts.RENTED}</td>
+                    <td className="px-6 py-4 text-center text-gray-500">{product.counts.SOLD}</td>
+                    <td className="px-6 py-4 text-center text-red-500">{product.counts.MAINTENANCE}</td>
+                    <td className="px-6 py-4 text-right space-x-2">
+                      <button 
+                        onClick={() => {
+                          setSelectedProduct(product);
+                          setIsModalOpen(true);
+                        }}
+                        className="text-indigo-600 hover:text-indigo-900 font-medium"
+                      >
+                        เพิ่มสต็อก
+                      </button>
+                      <button 
+                        onClick={() => setExpandedProductId(expandedProductId === product.id ? null : product.id)}
+                        className="text-gray-400 hover:text-gray-600 ml-2"
+                      >
+                        {expandedProductId === product.id ? "ย่อ" : "รายละเอียด"}
+                      </button>
+                    </td>
+                  </tr>
+                  {expandedProductId === product.id && (
+                    <tr className="bg-gray-50/50">
+                      <td colSpan={7} className="px-6 py-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                          {product.equipment.map((item: any) => (
+                            <div key={item.id} className="bg-white p-3 rounded border border-gray-200 text-xs shadow-sm">
+                              <div className="flex justify-between items-start mb-2">
+                                <span className={`px-1.5 py-0.5 rounded font-bold uppercase ${
+                                  item.status === 'AVAILABLE' ? 'bg-green-100 text-green-700' : 
+                                  item.status === 'RENTED' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'
+                                }`}>
+                                  {item.status}
+                                </span>
+                                {item.status === 'AVAILABLE' && (
+                                  <button 
+                                    onClick={() => handleRemoveStock(item.id)}
+                                    className="text-red-400 hover:text-red-600"
+                                  >
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                              <div className="font-mono text-gray-600 truncate" title={item.serialNumber}>
+                                {item.serialNumber}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                </div>
+                </React.Fragment>
               ))}
-              <button onClick={addField} disabled={isPending} className="text-xs text-[var(--accent-cyan)] hover:text-white transition-colors font-bold">+ Add another serial number</button>
-              {error && <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-3">{error}</div>}
-            </>
-          )}
+            </tbody>
+          </table>
         </div>
-        {!success && (
-          <div className="p-4 border-t border-white/5 flex gap-2 justify-end">
-            <button onClick={onClose} disabled={isPending} className="px-4 py-2 rounded-xl text-sm font-bold text-[var(--text-secondary)] hover:text-white bg-white/5 hover:bg-white/10 transition-colors">Cancel</button>
-            <button onClick={handleSubmit} disabled={isPending} className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-blue)] hover:opacity-90 transition-opacity disabled:opacity-50">
-              {isPending ? "Adding..." : `Add ${serials.filter(Boolean).length} Unit(s)`}
-            </button>
-          </div>
-        )}
       </div>
-    </div>
-  );
-}
 
-// ─── Remove Stock Modal ───
-function RemoveStockModal({
-  product,
-  onClose,
-}: {
-  product: InventoryProduct;
-  onClose: () => void;
-}) {
-  const available = product.equipment.filter((e) => e.status === "AVAILABLE");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [confirm, setConfirm] = useState(false);
-
-  const toggle = (id: string) => {
-    const next = new Set(selected);
-    next.has(id) ? next.delete(id) : next.add(id);
-    setSelected(next);
-  };
-
-  const toggleAll = () => {
-    if (selected.size === available.length) setSelected(new Set());
-    else setSelected(new Set(available.map((e) => e.id)));
-  };
-
-  const handleRemove = () => {
-    if (!confirm) { setConfirm(true); return; }
-    setError(null);
-    startTransition(async () => {
-      const result = await removeEquipmentStock([...selected]);
-      if (result.success) {
-        setSuccess(true);
-        setTimeout(onClose, 1200);
-      } else {
-        setError(result.error || "Failed to remove stock.");
-        setConfirm(false);
-      }
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-[#0a0a0f] border border-[var(--border-color)] rounded-2xl overflow-hidden shadow-2xl max-w-md w-full mx-4 animate-in">
-        <div className="flex items-center justify-between p-4 border-b border-white/5">
-          <h3 className="font-bold text-white">🗑️ Remove Stock — {product.name}</h3>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors">✕</button>
-        </div>
-        <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
-          {success ? (
-            <div className="text-center py-8">
-              <div className="text-4xl mb-2">✅</div>
-              <p className="text-green-400 font-bold">Stock removed successfully!</p>
+      {/* Add Stock Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900">เพิ่มสต็อก: {selectedProduct?.name}</h3>
             </div>
-          ) : available.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-4xl mb-2">📭</div>
-              <p className="text-[var(--text-secondary)]">No AVAILABLE equipment to remove.</p>
-            </div>
-          ) : (
-            <>
-              <p className="text-xs text-[var(--text-muted)]">Select AVAILABLE equipment to remove. Only units not currently rented, reserved, or sold can be removed.</p>
-              <div className="flex items-center gap-2 pb-1 border-b border-white/5">
-                <input type="checkbox" checked={selected.size === available.length && available.length > 0} onChange={toggleAll} className="accent-[var(--accent-cyan)]" />
-                <span className="text-xs text-[var(--text-muted)] font-bold">Select All ({available.length})</span>
-              </div>
-              {available.map((eq) => (
-                <label key={eq.id} className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${selected.has(eq.id) ? "bg-red-500/10 border border-red-500/20" : "hover:bg-white/5 border border-transparent"}`}>
-                  <input type="checkbox" checked={selected.has(eq.id)} onChange={() => toggle(eq.id)} className="accent-red-400" />
-                  <div>
-                    <div className="text-sm font-mono text-white">{eq.serialNumber}</div>
-                    <div className="text-[10px] text-[var(--text-muted)]">Added: {new Date(eq.createdAt).toLocaleDateString("th-TH")}</div>
-                  </div>
+            <form onSubmit={handleAddStock} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Serial Numbers (1 รายการต่อบรรทัด)
                 </label>
-              ))}
-              {error && <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-3">{error}</div>}
-            </>
-          )}
-        </div>
-        {!success && available.length > 0 && (
-          <div className="p-4 border-t border-white/5 flex gap-2 justify-end">
-            <button onClick={onClose} disabled={isPending} className="px-4 py-2 rounded-xl text-sm font-bold text-[var(--text-secondary)] hover:text-white bg-white/5 hover:bg-white/10 transition-colors">Cancel</button>
-            <button onClick={handleRemove} disabled={isPending || selected.size === 0} className={`px-4 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-30 ${confirm ? "bg-red-600 hover:bg-red-500 animate-pulse" : "bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30"}`}>
-              {isPending ? "Removing..." : confirm ? `⚠️ Confirm Remove ${selected.size}` : `Remove ${selected.size} Selected`}
-            </button>
+                <textarea
+                  required
+                  rows={8}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                  placeholder="SN0001&#10;SN0002&#10;SN0003"
+                  value={serialNumbers}
+                  onChange={(e) => setSerialNumbers(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  {isSubmitting ? "กำลังบันทึก..." : "ยืนยันการเพิ่ม"}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Equipment Detail Row ───
-function EquipmentDetail({ equipment }: { equipment: EquipmentRow[] }) {
-  const [open, setOpen] = useState(false);
-  if (!equipment.length) return <span className="text-xs text-[var(--text-muted)]">No units</span>;
-  return (
-    <div>
-      <button onClick={() => setOpen(!open)} className="text-[10px] text-[var(--accent-cyan)] hover:text-white transition-colors font-bold">{open ? "▼ Hide" : "▶ Show"} {equipment.length} units</button>
-      {open && (
-        <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
-          {equipment.map((eq) => (
-            <div key={eq.id} className="flex items-center gap-2 text-[10px] bg-white/3 rounded-lg px-2 py-1">
-              <span className="font-mono text-white">{eq.serialNumber}</span>
-              <StatusBadge status={eq.status} count={1} />
-            </div>
-          ))}
         </div>
       )}
     </div>
   );
 }
 
-// ═══════════════════════════════════════
-// Main Component
-// ═══════════════════════════════════════
-
-interface Props {
-  products: InventoryProduct[];
-}
-
-export default function InventoryClient({ products }: Props) {
-  const [search, setSearch] = useState("");
-  const [addModal, setAddModal] = useState<InventoryProduct | null>(null);
-  const [removeModal, setRemoveModal] = useState<InventoryProduct | null>(null);
-
-  const maxPop = Math.max(...products.map((p) => p.popularityScore), 1);
-
-  const filtered = products.filter((p) =>
-    !search.trim() ||
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    Object.values(p.specs).some((v) => v.toLowerCase().includes(search.toLowerCase()))
-  );
-
-  const totalEquipment = products.reduce((s, p) => s + p.totalEquipment, 0);
-  const totalAvailable = products.reduce((s, p) => s + p.availableEquipment, 0);
-
-  const handleUpdateName = async (id: string, name: string) => { await updateProduct(id, { name }); };
-  const handleUpdatePrice = async (id: string, price: string) => { await updateProduct(id, { monthlyPrice: Number(price) }); };
-  const handleUpdateSpecs = async (id: string, specs: Record<string, string>) => { await updateProduct(id, { specs }); };
-
-  return (
-    <>
-      {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="glass rounded-2xl p-4 text-center">
-          <div className="text-2xl font-black text-gradient">{products.length}</div>
-          <div className="text-xs text-[var(--text-muted)] mt-1">Products</div>
-        </div>
-        <div className="glass rounded-2xl p-4 text-center">
-          <div className="text-2xl font-black text-gradient-cyan">{totalEquipment}</div>
-          <div className="text-xs text-[var(--text-muted)] mt-1">Total Units</div>
-        </div>
-        <div className="glass rounded-2xl p-4 text-center">
-          <div className="text-2xl font-black bg-gradient-to-r from-[var(--accent-green)] to-[var(--accent-cyan)] bg-clip-text text-transparent">{totalAvailable}</div>
-          <div className="text-xs text-[var(--text-muted)] mt-1">Available</div>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="mb-4">
-        <div className="glass rounded-xl p-1 flex items-center">
-          <span className="px-3 text-[var(--text-muted)]">🔍</span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search products by name or specs..."
-            className="flex-1 bg-transparent outline-none text-sm text-white py-2 pr-3 placeholder:text-[var(--text-muted)]"
-          />
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="glass rounded-2xl overflow-hidden neon-border">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/5 text-[var(--text-muted)] text-xs uppercase tracking-wider">
-                <th className="text-left p-4 font-bold">Product</th>
-                <th className="text-left p-4 font-bold hidden md:table-cell">Specs</th>
-                <th className="text-left p-4 font-bold">Price/mo</th>
-                <th className="text-center p-4 font-bold">Stock</th>
-                <th className="text-center p-4 font-bold hidden sm:table-cell">Popularity</th>
-                <th className="text-center p-4 font-bold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-12 text-center text-[var(--text-muted)]">
-                    <div className="text-4xl mb-2">📭</div>
-                    No products found.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((product, idx) => (
-                  <tr
-                    key={product.id}
-                    className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
-                    style={{ animationDelay: `${idx * 50}ms` }}
-                  >
-                    {/* Name */}
-                    <td className="p-4">
-                      <EditableCell value={product.name} onSave={(v) => handleUpdateName(product.id, v)} />
-                      <div className="mt-1">
-                        <EquipmentDetail equipment={product.equipment} />
-                      </div>
-                    </td>
-
-                    {/* Specs */}
-                    <td className="p-4 hidden md:table-cell">
-                      <SpecsEditor specs={product.specs} onSave={(s) => handleUpdateSpecs(product.id, s)} />
-                    </td>
-
-                    {/* Price */}
-                    <td className="p-4">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-[var(--text-muted)] w-12">Rent:</span>
-                          <EditableCell value={String(product.monthlyPrice)} onSave={(v) => handleUpdatePrice(product.id, v)} type="number" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-[var(--text-muted)] w-12">Buy:</span>
-                          <EditableCell value={String(product.buyPrice)} onSave={(v) => handleUpdateBuyPrice(product.id, v)} type="number" />
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Stock */}
-                    <td className="p-4 text-center">
-                      <div className="font-black text-white">{product.availableEquipment}<span className="text-[var(--text-muted)] font-normal">/{product.totalEquipment}</span></div>
-                      <div className="flex flex-wrap justify-center gap-1 mt-1">
-                        {Object.entries(product.statusBreakdown).map(([s, c]) => (
-                          <StatusBadge key={s} status={s} count={c as number} />
-                        ))}
-                      </div>
-                    </td>
-
-                    {/* Popularity */}
-                    <td className="p-4 hidden sm:table-cell">
-                      <div className="flex flex-col items-center gap-1">
-                        <PopularityBar score={product.popularityScore} max={maxPop} />
-                        <div className="text-[10px] text-[var(--text-muted)]">
-                          {product.rentalCount}R · {product.purchaseCount}P
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="p-4">
-                      <div className="flex flex-col items-center gap-1.5">
-                        <button
-                          onClick={() => setAddModal(product)}
-                          className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/30 transition-colors text-xs font-bold w-full max-w-[120px]"
-                        >📦 Add Stock</button>
-                        <button
-                          onClick={() => setRemoveModal(product)}
-                          className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 transition-colors text-xs font-bold w-full max-w-[120px]"
-                        >🗑️ Remove</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modals */}
-      {addModal && <AddStockModal product={addModal} onClose={() => setAddModal(null)} />}
-      {removeModal && <RemoveStockModal product={removeModal} onClose={() => setRemoveModal(null)} />}
-    </>
-  );
-}
+// Add React to the file scope since we're using React.Fragment
+import React from "react";

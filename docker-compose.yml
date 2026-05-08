@@ -1,16 +1,21 @@
 services:
   db:
-    image: mariadb:10.11
+    image: mysql:8.0
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: ikom_rental
+      MYSQL_DATABASE: ikom_db
+      MYSQL_ROOT_PASSWORD: root_password
       MYSQL_USER: ikom_user
       MYSQL_PASSWORD: ikom_password
-    volumes:
-      - db_data:/var/lib/mysql
     ports:
       - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   app:
     build:
@@ -18,15 +23,16 @@ services:
       dockerfile: Dockerfile
     restart: always
     environment:
-      DATABASE_URL: mysql://ikom_user:ikom_password@db:3306/ikom_rental
-      JWT_SECRET: your_jwt_secret_here
+      DATABASE_URL: mysql://ikom_user:ikom_password@db:3306/ikom_db
       NODE_ENV: production
     ports:
       - "3000:3000"
     depends_on:
-      - db
-    volumes:
-      - ./public/uploads:/app/public/uploads
+      db:
+        condition: service_healthy
+    # Run migrations before starting the app
+    command: >
+      sh -c "npx prisma migrate deploy && node server.js"
 
 volumes:
-  db_data:
+  mysql_data:
