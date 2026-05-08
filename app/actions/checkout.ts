@@ -5,7 +5,7 @@ import {
   EquipmentStatus,
   RentalStatus,
   PurchaseOrderStatus,
-} from "@/app/generated/prisma/client";
+} from "@prisma/client";
 import { getSession } from "./auth";
 import path from "path";
 import fs from "fs/promises";
@@ -292,13 +292,12 @@ export async function processPurchaseCheckout(
       }
 
       // 5. Create the purchase order
-      //    totalPrice is derived from the product's monthlyPrice
-      //    (In a production system you'd likely have a separate sellingPrice field)
+      //    totalPrice uses the product's dedicated buyPrice field
       const newOrder = await tx.purchaseOrder.create({
         data: {
           userId: user.id,
           equipmentId: availableEquipment.id,
-          totalPrice: product.monthlyPrice,
+          totalPrice: product.buyPrice,
           paymentSlipUrl,
           status: PurchaseOrderStatus.PENDING_PAYMENT,
         },

@@ -2,7 +2,7 @@ import prisma from "@/lib/prisma";
 import Hero from "./components/Hero";
 import Features from "./components/Features";
 import PopularProducts from "./components/PopularProducts";
-import { EquipmentStatus } from "@/app/generated/prisma/client";
+import { EquipmentStatus } from "@prisma/client";
 import { MappedProduct } from "./products/components/ProductCard";
 
 export default async function Home() {
@@ -38,7 +38,7 @@ export default async function Home() {
       specs: specsArray.length > 0 ? specsArray : ["มาตรฐาน"],
       description: p.description,
       rentPrice: Number(p.monthlyPrice),
-      buyPrice: Number(p.monthlyPrice) * 12 * 1.5,
+      buyPrice: Number(p.buyPrice),
       image: p.imageUrl || "/workstation.png",
       tags: ["ยอดนิยม"],
       isAvailable: p._count.equipment > 0,

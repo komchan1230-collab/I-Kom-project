@@ -6,7 +6,7 @@ import { useState } from "react";
 import { logout } from "@/app/actions/auth";
 
 interface NavbarProps {
-  session: { userId: string; name: string; email: string } | null;
+  session: { userId: string; name: string; email: string; role?: string } | null;
 }
 
 export default function Navbar({ session }: NavbarProps) {
@@ -22,6 +22,8 @@ export default function Navbar({ session }: NavbarProps) {
   const links = [
     { href: "/", label: "หน้าหลัก" },
     { href: "/products", label: "ซื้อ-เช่าคอม" },
+    ...(session ? [{ href: "/profile", label: "รายการของฉัน" }] : []),
+    ...(session?.role === "ADMIN" ? [{ href: "/admin", label: "จัดการระบบ (Admin)" }] : []),
   ];
 
   return (

@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE `products` ADD COLUMN `buy_price` DECIMAL(10, 2) NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE `users` ADD COLUMN `role` ENUM('USER', 'ADMIN') NOT NULL DEFAULT 'USER';

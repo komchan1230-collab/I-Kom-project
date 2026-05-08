@@ -1,6 +1,6 @@
-import { PrismaClient } from "../app/generated/prisma/client";
+import { PrismaClient, EquipmentStatus, VerificationStatus, Role } from "@prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { EquipmentStatus, VerificationStatus } from "../app/generated/prisma/client";
+import bcrypt from "bcryptjs";
 
 const connectionString = process.env.DATABASE_URL || "mysql://root:096096@localhost:3306/ikom_rental";
 const adapterUrl = connectionString.includes("?")
@@ -13,18 +13,38 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("🌱 Seeding database...\n");
 
+  // ── Clean existing data (order matters for FK constraints) ──
+  console.log("🧹 Cleaning existing data...");
+  await prisma.purchaseOrder.deleteMany();
+  await prisma.rental.deleteMany();
+  await prisma.equipment.deleteMany();
+  await prisma.product.deleteMany();
+  await prisma.user.deleteMany();
+  console.log("✅ Cleaned!\n");
+
   // ── 1. Create mock student user ──
   const user = await prisma.user.create({
     data: {
       name: "สมชาย ทดสอบ",
       email: "somchai@test.com",
-      password: "$2b$10$dummyhashforseeding1234567890abcdef", // not a real hash
-      university: "มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าธนบุรี",
-      faculty: "คณะวิศวกรรมศาสตร์",
+      password: await bcrypt.hash("password", 10),
       verificationStatus: VerificationStatus.APPROVED,
+      role: Role.USER,
     },
   });
   console.log(`✅ User: ${user.name} (${user.email})`);
+
+  // ── 1.5 Create Admin user ──
+  const admin = await prisma.user.create({
+    data: {
+      name: "System Admin",
+      email: "admin@ikom.com",
+      password: await bcrypt.hash("admin", 10),
+      verificationStatus: VerificationStatus.APPROVED,
+      role: Role.ADMIN,
+    },
+  });
+  console.log(`✅ Admin: ${admin.name} (${admin.email})`);
 
   // ── 2. Create 3 products ──
   const macbook = await prisma.product.create({
@@ -36,9 +56,10 @@ async function main() {
         CPU: "Apple M3 (8-core)",
         RAM: "16GB Unified",
         Storage: "512GB SSD",
-        Display: "14\" Liquid Retina XDR",
+        Display: '14" Liquid Retina XDR',
       },
       monthlyPrice: 3500,
+      buyPrice: 59900,
       imageUrl: "/laptop.png",
     },
   });
@@ -55,6 +76,7 @@ async function main() {
         Storage: "1TB NVMe SSD",
       },
       monthlyPrice: 2800,
+      buyPrice: 42900,
       imageUrl: "/laptop.png",
     },
   });
@@ -68,9 +90,10 @@ async function main() {
         CPU: "Intel Core i7-1365U",
         RAM: "16GB LPDDR5",
         Storage: "512GB SSD",
-        Display: "14\" 2.8K OLED",
+        Display: '14" 2.8K OLED',
       },
       monthlyPrice: 2200,
+      buyPrice: 34900,
       imageUrl: "/laptop.png",
     },
   });

@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import ShopClient from "./components/ShopClient";
-import { EquipmentStatus } from "@/app/generated/prisma/client";
+import { EquipmentStatus } from "@prisma/client";
 import { MappedProduct } from "./components/ProductCard";
 
 // A small helper to seed dummy data if the database is empty
@@ -15,6 +15,7 @@ async function seedDemoDataIfEmpty() {
           description: "Perfect for 3D rendering, video editing, and heavy workloads.",
           specs: { CPU: "Intel Core i9 14900K", RAM: "64GB DDR5", GPU: "RTX 4090 24GB" },
           monthlyPrice: 4500,
+          buyPrice: 89900,
           imageUrl: "/workstation.png",
         }
       });
@@ -25,6 +26,7 @@ async function seedDemoDataIfEmpty() {
           description: "High frame rates for competitive gaming and streaming.",
           specs: { CPU: "AMD Ryzen 7 7800X3D", RAM: "32GB DDR5", GPU: "RTX 4070 Ti" },
           monthlyPrice: 2800,
+          buyPrice: 49900,
           imageUrl: "/gaming-desktop.png",
         }
       });
@@ -35,6 +37,7 @@ async function seedDemoDataIfEmpty() {
           description: "Lightweight, long battery life, perfect for taking to classes.",
           specs: { CPU: "Apple M3", RAM: "16GB", Storage: "512GB SSD" },
           monthlyPrice: 1200,
+          buyPrice: 27900,
           imageUrl: "/laptop.png",
         }
       });
@@ -100,7 +103,7 @@ export default async function ProductsPage() {
       specs: specsArray.length > 0 ? specsArray : ["มาตรฐาน"],
       description: p.description,
       rentPrice: Number(p.monthlyPrice),
-      buyPrice: Number(p.monthlyPrice) * 12 * 1.5,
+      buyPrice: Number(p.buyPrice),
       image: p.imageUrl || "/workstation.png",
       tags: ["แนะนำ", "เช่ารายเดือน"],
       isAvailable: p._count.equipment > 0,

@@ -1,8 +1,39 @@
-import { getPendingRentals, approveRental, rejectRental } from "@/app/actions/admin";
+import {
+  getPendingRentals, approveRental, rejectRental,
+  getPendingPurchases, approvePurchase, rejectPurchase,
+  getActiveRentals, processRentalReturn,
+  getCompletedPurchasesCount
+} from "@/app/actions/admin";
+import { getInventoryData } from "@/app/actions/inventory";
 import { formatPrice } from "@/app/components/ProductData";
+import Link from "next/link";
+import AdminTabs from "./AdminTabs";
+import { getSession } from "@/app/actions/auth";
+import { redirect } from "next/navigation";
+
+export const metadata = {
+  title: "Admin Dashboard | I-Kom",
+};
 
 export default async function AdminDashboard() {
-  const pendingRentals = await getPendingRentals();
+  const session = await getSession();
+  if (!session || session.role !== "ADMIN") {
+    redirect("/login");
+  }
+
+  const [
+    pendingRentals, 
+    pendingPurchases, 
+    inventoryProducts, 
+    activeRentals,
+    completedPurchasesCount
+  ] = await Promise.all([
+    getPendingRentals(),
+    getPendingPurchases(),
+    getInventoryData(),
+    getActiveRentals(),
+    getCompletedPurchasesCount(),
+  ]);
 
   return (
     <div className="min-h-screen pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative">
@@ -15,87 +46,74 @@ export default async function AdminDashboard() {
           Admin <span className="text-gradient">Dashboard</span>
         </h1>
         <p className="text-[var(--text-secondary)] mb-8">
-          จัดการรายการเช่าที่รอการอนุมัติ (Pending Rentals)
+          จัดการรายการเช่า สั่งซื้อ และสต็อกสินค้า
         </p>
 
-        {pendingRentals.length === 0 ? (
-          <div className="glass rounded-2xl p-12 text-center neon-border">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-[var(--accent-blue)]/50 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">ไม่มีรายการที่รออนุมัติ</h3>
-            <p className="text-[var(--text-secondary)]">รายการเช่าทั้งหมดได้รับการจัดการเรียบร้อยแล้ว</p>
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
+          <div className="glass rounded-2xl p-4 text-center">
+            <div className="text-2xl font-black text-gradient-cyan">{pendingRentals.length}</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">เช่า (รออนุมัติ)</div>
           </div>
-        ) : (
-          <div className="glass rounded-2xl overflow-hidden neon-border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-black/40 border-b border-[var(--border-color)]">
-                    <th className="p-4 text-sm font-semibold text-[var(--text-secondary)]">ผู้เช่า</th>
-                    <th className="p-4 text-sm font-semibold text-[var(--text-secondary)]">สินค้า</th>
-                    <th className="p-4 text-sm font-semibold text-[var(--text-secondary)]">วันที่เช่า (เริ่มต้น - สิ้นสุด)</th>
-                    <th className="p-4 text-sm font-semibold text-[var(--text-secondary)] text-right">มัดจำ</th>
-                    <th className="p-4 text-sm font-semibold text-[var(--text-secondary)] text-center">สถานะ</th>
-                    <th className="p-4 text-sm font-semibold text-[var(--text-secondary)] text-right">การจัดการ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-color)]">
-                  {pendingRentals.map((rental) => (
-                    <tr key={rental.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="p-4">
-                        <div className="font-medium text-[var(--text-primary)]">{rental.user.name || "ไม่ระบุชื่อ"}</div>
-                        <div className="text-xs text-[var(--text-secondary)]">{rental.user.email}</div>
-                      </td>
-                      <td className="p-4">
-                        <div className="font-medium text-[var(--text-primary)]">{rental.equipment.product.name}</div>
-                        <div className="text-xs text-[var(--text-secondary)] font-mono">SN: {rental.equipment.serialNumber}</div>
-                      </td>
-                      <td className="p-4">
-                        <div className="text-sm text-[var(--text-primary)]">
-                          {new Date(rental.startDate).toLocaleDateString("th-TH")}
-                        </div>
-                        <div className="text-xs text-[var(--text-secondary)]">
-                          ถึง {new Date(rental.endDate).toLocaleDateString("th-TH")}
-                        </div>
-                      </td>
-                      <td className="p-4 text-right font-medium text-[var(--accent-cyan)]">
-                        ฿{formatPrice(Number(rental.depositAmount))}
-                      </td>
-                      <td className="p-4 text-center">
-                        <span className="inline-block px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                          {rental.status}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <form action={approveRental.bind(null, rental.id)}>
-                            <button 
-                              type="submit"
-                              className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/30 transition-colors text-sm font-medium"
-                              title="อนุมัติการเช่า (Approve)"
-                            >
-                              อนุมัติ
-                            </button>
-                          </form>
-                          <form action={rejectRental.bind(null, rental.id)}>
-                            <button 
-                              type="submit"
-                              className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 transition-colors text-sm font-medium"
-                              title="ยกเลิกการเช่า (Reject/Cancel)"
-                            >
-                              ยกเลิก
-                            </button>
-                          </form>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="glass rounded-2xl p-4 text-center">
+            <div className="text-2xl font-black text-gradient-green">{activeRentals.length}</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">กำลังเช่าอยู่</div>
           </div>
-        )}
+          <div className="glass rounded-2xl p-4 text-center">
+            <div className="text-2xl font-black text-gradient-purple">{pendingPurchases.length}</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">ซื้อ (รออนุมัติ)</div>
+          </div>
+          <div className="glass rounded-2xl p-4 text-center">
+            <div className="text-2xl font-black text-white">{completedPurchasesCount}</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">ขายได้แล้ว (เครื่อง)</div>
+          </div>
+          <div className="glass rounded-2xl p-4 text-center">
+            <div className="text-2xl font-black text-[var(--accent-cyan)]">{inventoryProducts.length}</div>
+            <div className="text-xs text-[var(--text-muted)] mt-1">รายการสินค้า</div>
+          </div>
+        </div>
+
+        <AdminTabs
+          pendingRentals={pendingRentals.map(r => ({
+            id: r.id,
+            userName: r.user.name || "ไม่ระบุชื่อ",
+            userEmail: r.user.email,
+            productName: r.equipment.product.name,
+            serialNumber: r.equipment.serialNumber,
+            startDate: r.startDate.toISOString(),
+            endDate: r.endDate.toISOString(),
+            depositAmount: Number(r.depositAmount),
+            paymentSlipUrl: r.paymentSlipUrl,
+            status: r.status,
+          }))}
+          pendingPurchases={pendingPurchases.map(p => ({
+            id: p.id,
+            userName: p.user.name || "ไม่ระบุชื่อ",
+            userEmail: p.user.email,
+            productName: p.equipment.product.name,
+            serialNumber: p.equipment.serialNumber,
+            totalPrice: Number(p.totalPrice),
+            paymentSlipUrl: p.paymentSlipUrl,
+            status: p.status,
+            createdAt: p.createdAt.toISOString(),
+          }))}
+          activeRentals={activeRentals.map(r => ({
+            id: r.id,
+            userName: r.user.name || "ไม่ระบุชื่อ",
+            userEmail: r.user.email,
+            productName: r.equipment.product.name,
+            serialNumber: r.equipment.serialNumber,
+            startDate: r.startDate.toISOString(),
+            endDate: r.endDate.toISOString(),
+            status: r.status,
+          }))}
+          inventoryProducts={inventoryProducts}
+          approveRental={approveRental}
+          rejectRental={rejectRental}
+          approvePurchase={approvePurchase}
+          rejectPurchase={rejectPurchase}
+          processRentalReturn={processRentalReturn}
+        />
       </div>
     </div>
   );

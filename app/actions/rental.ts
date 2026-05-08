@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { EquipmentStatus, RentalStatus } from "@/app/generated/prisma/client";
+import { EquipmentStatus, RentalStatus } from "@prisma/client";
 
 export type BookingRequest = {
   userId: string;

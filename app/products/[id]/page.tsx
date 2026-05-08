@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { EquipmentStatus } from "@/app/generated/prisma/client";
+import { EquipmentStatus } from "@prisma/client";
 import { notFound } from "next/navigation";
 import ProductDetailClient from "./ProductDetailClient";
 import type { Metadata } from "next";
@@ -64,7 +64,7 @@ export default async function ProductDetailPage({ params }: Props) {
     categoryLabel,
     specs: specsArray,
     rentPrice: Number(product.monthlyPrice),
-    buyPrice: Number(product.monthlyPrice) * 12 * 1.5,
+    buyPrice: Number(product.buyPrice),
     image: product.imageUrl || "/workstation.png",
     isAvailable: product._count.equipment > 0,
     stockCount: product._count.equipment,

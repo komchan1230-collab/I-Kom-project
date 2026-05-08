@@ -13,8 +13,6 @@ export async function registerUser(formData: FormData) {
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
-    const university = formData.get("university") as string;
-    const faculty = formData.get("faculty") as string;
 
     if (!email || !password || !name) {
       return { success: false, error: "กรุณากรอกข้อมูลให้ครบถ้วน" };
@@ -35,7 +33,7 @@ export async function registerUser(formData: FormData) {
       },
     });
 
-    await createSession(user.id, user.name || "", user.email);
+    await createSession(user.id, user.name || "", user.email, user.role);
 
     return { success: true };
   } catch (error: any) {
@@ -63,7 +61,7 @@ export async function loginUser(formData: FormData) {
       return { success: false, error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
     }
 
-    await createSession(user.id, user.name || "", user.email);
+    await createSession(user.id, user.name || "", user.email, user.role);
 
     return { success: true };
   } catch (error: any) {
@@ -78,9 +76,9 @@ export async function logout() {
 }
 
 // Session Helpers
-async function createSession(userId: string, name: string, email: string) {
+async function createSession(userId: string, name: string, email: string, role: string) {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-  const session = await new SignJWT({ userId, name, email })
+  const session = await new SignJWT({ userId, name, email, role })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
@@ -102,7 +100,7 @@ export async function getSession() {
     const { payload } = await jwtVerify(session, encodedKey, {
       algorithms: ["HS256"],
     });
-    return payload as { userId: string; name: string; email: string };
+    return payload as { userId: string; name: string; email: string; role: string };
   } catch (error) {
     return null;
   }
