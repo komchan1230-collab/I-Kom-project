@@ -5,10 +5,24 @@ import { EquipmentStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getSession } from "./auth";
 
+export type InventoryProduct = {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  counts: {
+    AVAILABLE: number;
+    RESERVED: number;
+    RENTED: number;
+    SOLD: number;
+    MAINTENANCE: number;
+  };
+  equipment: any[];
+};
+
 /**
  * Fetches all products with their equipment counts grouped by status.
  */
-export async function getInventory() {
+export async function getInventory(): Promise<InventoryProduct[]> {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") {
     throw new Error("UNAUTHORIZED");

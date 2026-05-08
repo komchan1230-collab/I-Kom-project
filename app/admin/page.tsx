@@ -4,7 +4,7 @@ import {
   getActiveRentals, processRentalReturn,
   getCompletedPurchasesCount
 } from "@/app/actions/admin";
-import { getInventoryData } from "@/app/actions/inventory";
+import { getInventory } from "@/app/actions/inventory";
 import { formatPrice } from "@/app/components/ProductData";
 import Link from "next/link";
 import AdminTabs from "./AdminTabs";
@@ -30,7 +30,7 @@ export default async function AdminDashboard() {
   ] = await Promise.all([
     getPendingRentals(),
     getPendingPurchases(),
-    getInventoryData(),
+    getInventory(),
     getActiveRentals(),
     getCompletedPurchasesCount(),
   ]);
