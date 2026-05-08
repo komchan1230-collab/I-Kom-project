@@ -14,22 +14,22 @@ export default async function ProfilePage() {
   const result = await getMyOrders();
   const orders = result.success ? result.orders : [];
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case "PENDING":
       case "PENDING_PAYMENT":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
       case "ACTIVE":
       case "COMPLETED":
       case "APPROVED":
-        return "bg-green-100 text-green-800 border-green-200";
+        return "bg-green-500/20 text-green-400 border-green-500/30";
       case "CANCELLED":
       case "RETURNED":
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-white/10 text-gray-400 border-white/10";
       case "OVERDUE":
-        return "bg-red-100 text-red-800 border-red-200";
+        return "bg-red-500/20 text-red-400 border-red-500/30";
       default:
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return "bg-blue-500/20 text-blue-400 border-blue-500/30";
     }
   };
 
@@ -49,19 +49,36 @@ export default async function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[var(--bg-primary)] pt-24 pb-20 relative overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute top-1/4 left-0 w-96 h-96 bg-[var(--accent-purple)]/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-0 w-96 h-96 bg-[var(--accent-blue)]/10 rounded-full blur-[120px] pointer-events-none" />
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
         {/* Profile Header */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-          <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6">
-            <div className="h-24 w-24 bg-indigo-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
+        <div className="glass rounded-3xl p-6 mb-10 animate-fade-in-up">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-8">
+            <div className="h-24 w-24 bg-[var(--gradient-primary)] rounded-full flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-blue-500/20 ring-4 ring-white/5">
               {session.name.charAt(0).toUpperCase()}
             </div>
-            <div className="text-center md:text-left">
-              <h1 className="text-2xl font-bold text-gray-900">{session.name}</h1>
-              <p className="text-gray-500">{session.email}</p>
-              <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                {session.role === "ADMIN" ? "ผู้ดูแลระบบ" : "สมาชิก"}
+            <div className="text-center sm:text-left flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                <h1 className="text-3xl font-black text-white">{session.name}</h1>
+                <span className="inline-flex items-center self-center sm:self-auto px-3 py-1 rounded-full text-[10px] font-bold bg-white/10 text-[var(--text-secondary)] border border-white/10 uppercase tracking-widest">
+                  {session.role === "ADMIN" ? "Admin Mode" : "User Member"}
+                </span>
+              </div>
+              <p className="text-[var(--text-secondary)] font-medium mb-4">{session.email}</p>
+              
+              <div className="flex flex-wrap justify-center sm:justify-start gap-4">
+                <div className="px-4 py-2 bg-white/5 rounded-xl border border-white/5">
+                  <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-tighter mb-0.5">รายการทั้งหมด</p>
+                  <p className="text-xl font-black text-white leading-none">{orders.length}</p>
+                </div>
+                <div className="px-4 py-2 bg-white/5 rounded-xl border border-white/5">
+                  <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-tighter mb-0.5">สถานะบัญชี</p>
+                  <p className="text-xl font-black text-[var(--accent-green)] leading-none">ปกติ</p>
+                </div>
               </div>
             </div>
           </div>
@@ -69,98 +86,114 @@ export default async function ProfilePage() {
 
         {/* Orders Section */}
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">ประวัติการสั่งซื้อและเช่า</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <span className="w-1.5 h-6 bg-[var(--accent-blue)] rounded-full"></span>
+              ประวัติรายการของฉัน
+            </h2>
             <Link 
               href="/products" 
-              className="text-indigo-600 hover:text-indigo-700 font-medium text-sm transition-colors"
+              className="text-[var(--accent-cyan)] hover:opacity-80 font-bold text-xs transition-all flex items-center gap-1"
             >
-              เลือกดูสินค้าเพิ่มเติม &rarr;
+              สั่งซื้อเพิ่ม ➔
             </Link>
           </div>
 
           {orders.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-              <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            <div className="glass rounded-3xl p-16 text-center animate-fade-in">
+              <div className="mx-auto h-20 w-20 bg-white/5 rounded-full flex items-center justify-center mb-6 border border-white/10">
+                <svg className="h-10 w-10 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
               </div>
-              <p className="text-gray-500 text-lg">ยังไม่มีรายการสั่งซื้อหรือเช่าในขณะนี้</p>
+              <h3 className="text-xl font-bold text-white mb-2">ยังไม่มีรายการ</h3>
+              <p className="text-[var(--text-secondary)] mb-8">คุณยังไม่ได้ทำการเช่าหรือซื้อสินค้าใดๆ ในขณะนี้</p>
               <Link
                 href="/products"
-                className="mt-4 inline-block px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                className="btn-primary"
               >
-                ไปหน้าสินค้า
+                เลือกดูสินค้าเลย
               </Link>
             </div>
           ) : (
-            <div className="grid gap-6">
-              {orders.map((order) => (
+            <div className="grid gap-4">
+              {orders.map((order, idx) => (
                 <div 
                   key={order.id} 
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+                  className="glass rounded-2xl overflow-hidden card-hover animate-fade-in-up"
+                  style={{ animationDelay: `${idx * 100}ms` }}
                 >
-                  <div className="p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-start space-x-4">
-                        <div className="relative h-20 w-20 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
+                  <div className="p-5 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                      <div className="flex items-start space-x-5">
+                        <div className="relative h-20 w-20 flex-shrink-0 bg-white/5 rounded-2xl overflow-hidden border border-white/10 p-2">
                           <Image
                             src={order.productImage}
                             alt={order.productName}
                             fill
-                            className="object-cover"
+                            className="object-contain p-2"
                           />
                         </div>
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                              order.type === 'rental' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
+                              order.type === 'rental' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
                             }`}>
-                              {order.type === 'rental' ? 'เช่า' : 'ซื้อ'}
+                              {order.type === 'rental' ? 'RENT' : 'BUY'}
                             </span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusColor(order.status)}`}>
+                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black border uppercase tracking-widest ${getStatusBadgeClass(order.status)}`}>
                               {order.status}
                             </span>
                           </div>
-                          <h3 className="text-lg font-bold text-gray-900 mt-1">{order.productName}</h3>
-                          <p className="text-sm text-gray-500">วันที่ทำรายการ: {formatDate(order.createdAt)}</p>
-                          {order.type === 'rental' && order.startDate && order.endDate && (
-                            <p className="text-xs text-indigo-600 font-medium mt-1">
-                              ระยะเวลา: {formatDate(order.startDate)} - {formatDate(order.endDate)}
-                            </p>
-                          )}
+                          <h3 className="text-lg font-bold text-white leading-tight">{order.productName}</h3>
+                          <div className="flex flex-col gap-0.5">
+                            <p className="text-xs text-[var(--text-muted)]">ทำรายการเมื่อ: {formatDate(order.createdAt)}</p>
+                            {order.type === 'rental' && order.startDate && order.endDate && (
+                              <p className="text-[10px] text-[var(--accent-blue)] font-bold">
+                                📅 {new Date(order.startDate).toLocaleDateString()} - {new Date(order.endDate).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
-                      <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4">
-                        <div className="text-right">
-                          <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">
-                            {order.type === 'rental' ? 'ค่ามัดจำ' : 'ราคาสุทธิ'}
+                      <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 border-t sm:border-t-0 border-white/5 pt-4 sm:pt-0">
+                        <div className="text-left sm:text-right">
+                          <p className="text-[10px] text-[var(--text-muted)] uppercase font-black tracking-widest mb-0.5">
+                            {order.type === 'rental' ? 'Deposit Fee' : 'Total Price'}
                           </p>
-                          <p className="text-xl font-black text-gray-900">{formatCurrency(order.price)}</p>
+                          <p className="text-2xl font-black text-white">
+                            <span className="text-sm font-bold mr-1 text-[var(--text-secondary)]">฿</span>
+                            {formatCurrency(order.price).replace('฿', '')}
+                          </p>
                         </div>
                         
                         {order.paymentSlipUrl ? (
                           <div className="group relative">
-                            <div className="h-12 w-12 rounded border border-gray-200 overflow-hidden bg-gray-50 cursor-zoom-in">
+                            <div className="h-14 w-14 rounded-xl border border-white/10 overflow-hidden bg-white/5 cursor-zoom-in ring-2 ring-transparent group-hover:ring-[var(--accent-blue)] transition-all">
                               <Image 
                                 src={order.paymentSlipUrl} 
-                                alt="Payment Slip" 
-                                width={48} 
-                                height={48} 
-                                className="object-cover transition-transform group-hover:scale-110"
+                                alt="Slip" 
+                                width={56} 
+                                height={56} 
+                                className="object-cover opacity-80 group-hover:opacity-100 transition-all group-hover:scale-110"
                               />
+                              <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent flex items-center justify-center">
+                                <svg className="h-4 w-4 text-white opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                </svg>
+                              </div>
                             </div>
-                            <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-10">
-                              <div className="bg-white p-2 rounded-lg shadow-xl border border-gray-200 w-48">
-                                <p className="text-[10px] text-gray-400 mb-1 font-bold">หลักฐานการชำระเงิน</p>
-                                <div className="relative aspect-[3/4] w-full rounded overflow-hidden">
+                            {/* Hover Preview Tooltip */}
+                            <div className="absolute bottom-full right-0 mb-3 hidden group-hover:block z-50 animate-fade-in">
+                              <div className="glass p-2 rounded-2xl shadow-2xl border-white/20 w-52 overflow-hidden glow-blue">
+                                <p className="text-[10px] text-[var(--text-muted)] mb-2 font-black uppercase text-center">หลักฐานการชำระเงิน</p>
+                                <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-white">
                                   <Image 
                                     src={order.paymentSlipUrl} 
-                                    alt="Payment Slip Full" 
+                                    alt="Slip Full" 
                                     fill 
-                                    className="object-cover"
+                                    className="object-contain"
                                   />
                                 </div>
                               </div>
@@ -168,9 +201,9 @@ export default async function ProfilePage() {
                           </div>
                         ) : (
                           <div className="flex flex-col items-end">
-                            <span className="text-[10px] text-red-500 font-bold mb-1">รอการอัปโหลดสลิป</span>
-                            <button className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-md font-bold hover:bg-indigo-100 transition-colors border border-indigo-200">
-                              อัปโหลดสลิป
+                            <span className="text-[10px] text-red-400 font-black mb-2 animate-pulse uppercase tracking-tighter">รอการยืนยันสลิป</span>
+                            <button className="px-4 py-2 bg-white/5 text-white text-[10px] font-black rounded-xl border border-white/10 hover:bg-white/10 transition-all uppercase tracking-widest">
+                              Upload Slip
                             </button>
                           </div>
                         )}
