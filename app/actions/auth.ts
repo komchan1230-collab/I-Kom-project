@@ -4,9 +4,12 @@ import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { OAuth2Client } from "google-auth-library";
 
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-for-development-only";
 const encodedKey = new TextEncoder().encode(JWT_SECRET);
+
+const googleClient = new OAuth2Client(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
 
 export async function registerUser(formData: FormData) {
   try {
@@ -73,6 +76,40 @@ export async function loginUser(formData: FormData) {
 export async function logout() {
   (await cookies()).delete("session");
   return { success: true };
+}
+
+export async function loginWithGoogle(credential: string) {
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+    });
+    
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      return { success: false, error: "ไม่สามารถดึงข้อมูลอีเมลจาก Google ได้" };
+    }
+
+    const { email, name } = payload;
+
+    let user = await prisma.user.findUnique({ where: { email } });
+    
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email,
+          name: name || "Google User",
+        }
+      });
+    }
+
+    await createSession(user.id, user.name || "", user.email, user.role);
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error("[Google Login Error]:", error);
+    return { success: false, error: "เกิดข้อผิดพลาดในการยืนยันตัวตนกับ Google" };
+  }
 }
 
 // Session Helpers

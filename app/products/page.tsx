@@ -27,14 +27,14 @@ export default async function ProductsPage() {
     let categoryLabel = "ทั่วไป";
     const nameLower = p.name.toLowerCase();
     
-    if (nameLower.includes("gaming") || nameLower.includes("blaze") || nameLower.includes("titan") || nameLower.includes("fury")) {
-      categoryLabel = "เกมมิ่ง";
-    } else if (nameLower.includes("workstation") || nameLower.includes("creator") || nameLower.includes("studio")) {
-      categoryLabel = "เวิร์คสเตชั่น";
-    } else if (nameLower.includes("laptop") || nameLower.includes("swift") || nameLower.includes("air") || nameLower.includes("pro")) {
-      categoryLabel = "แล็ปท็อป";
-    } else if (nameLower.includes("office") || nameLower.includes("lite")) {
-      categoryLabel = "สำนักงาน";
+    if (nameLower.includes("titan") || nameLower.includes("high")) {
+      categoryLabel = "ระดับไฮเอนด์";
+    } else if (nameLower.includes("fury") || nameLower.includes("mid")) {
+      categoryLabel = "ระดับกลาง";
+    } else if (nameLower.includes("blaze") || nameLower.includes("entry")) {
+      categoryLabel = "เริ่มต้น";
+    } else if (nameLower.includes("stream") || nameLower.includes("master")) {
+      categoryLabel = "สตรีมเมอร์";
     }
 
     const specsArray = typeof p.specs === "object" && p.specs !== null 

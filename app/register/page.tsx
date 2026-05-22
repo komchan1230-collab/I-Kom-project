@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { registerUser } from "@/app/actions/auth";
+import { registerUser, loginWithGoogle } from "@/app/actions/auth";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -109,6 +110,39 @@ export default function RegisterPage() {
             {isLoading ? "กำลังสมัครสมาชิก..." : "สมัครสมาชิก"}
           </button>
         </form>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-[var(--border-color)]"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-[#111116] text-[var(--text-secondary)]">หรือ</span>
+          </div>
+        </div>
+
+        <div className="mt-2 mb-2 flex justify-center">
+          <GoogleLogin
+            onSuccess={async (credentialResponse) => {
+              if (credentialResponse.credential) {
+                setIsLoading(true);
+                const res = await loginWithGoogle(credentialResponse.credential);
+                if (res.success) {
+                  router.push("/products");
+                  router.refresh();
+                } else {
+                  setError(res.error || "เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Google");
+                  setIsLoading(false);
+                }
+              }
+            }}
+            onError={() => {
+              setError("เกิดข้อผิดพลาดในการเชื่อมต่อกับ Google");
+            }}
+            theme="filled_black"
+            text="signup_with"
+            shape="pill"
+          />
+        </div>
 
         <div className="mt-8 text-center text-sm text-[var(--text-secondary)]">
           มีบัญชีอยู่แล้ว?{" "}

@@ -47,75 +47,75 @@ async function main() {
   console.log(`✅ Admin: ${admin.name} (${admin.email})`);
 
   // ── 2. Create 3 products ──
-  const macbook = await prisma.product.create({
+  const titan = await prisma.product.create({
     data: {
-      name: "MacBook Pro M3",
+      name: "I-Kom TITAN X",
       description:
-        "แล็ปท็อประดับพรีเมียมจาก Apple ชิป M3 ประสิทธิภาพสูง จอ Retina 14 นิ้ว แบตอึด 18 ชม. เหมาะสำหรับครีเอเตอร์ นักพัฒนา และนักศึกษาที่ต้องการเครื่องมือระดับมืออาชีพ",
+        "เครื่องเกมมิ่งระดับท็อปสำหรับเกมเมอร์ที่ต้องการความแรงสูงสุด เล่นเกม AAA ได้ลื่นที่ 4K Ultra",
       specs: {
-        CPU: "Apple M3 (8-core)",
-        RAM: "16GB Unified",
-        Storage: "512GB SSD",
-        Display: '14" Liquid Retina XDR',
+        CPU: "Intel Core i9-14900K",
+        RAM: "64GB DDR5",
+        GPU: "RTX 4090 24GB",
+        Storage: "2TB NVMe SSD",
       },
-      monthlyPrice: 3500,
-      buyPrice: 59900,
-      imageUrl: "/laptop.png",
+      monthlyPrice: 6990,
+      buyPrice: 129900,
+      imageUrl: "/gaming-desktop.png",
     },
   });
 
-  const dellXps = await prisma.product.create({
+  const fury = await prisma.product.create({
     data: {
-      name: "Dell XPS 15",
+      name: "I-Kom FURY PRO",
       description:
-        "แล็ปท็อป Windows สุดพรีเมียม จอ OLED 15.6 นิ้ว สีสันสดใส ตัวเครื่องบางเบา สเปคแรง เหมาะทั้งทำงานและเล่นเกมเบาๆ",
+        "เครื่องเกมมิ่งระดับกลาง-สูง คุ้มค่าที่สุดสำหรับเกมเมอร์จริงจัง เล่นได้ทุกเกมที่ 1440p Ultra",
       specs: {
-        CPU: "Intel Core i7-13700H",
+        CPU: "Intel Core i7-14700K",
         RAM: "32GB DDR5",
-        GPU: "RTX 4060 8GB",
+        GPU: "RTX 4070 Ti 12GB",
         Storage: "1TB NVMe SSD",
       },
-      monthlyPrice: 2800,
-      buyPrice: 42900,
-      imageUrl: "/laptop.png",
+      monthlyPrice: 3990,
+      buyPrice: 69900,
+      imageUrl: "/gaming-desktop.png",
     },
   });
 
-  const thinkpad = await prisma.product.create({
+  const blaze = await prisma.product.create({
     data: {
-      name: "Lenovo ThinkPad X1 Carbon",
+      name: "I-Kom BLAZE",
       description:
-        "แล็ปท็อปธุรกิจระดับตำนาน คีย์บอร์ดดีที่สุดในโลก ทนทานมาตรฐานทหาร น้ำหนักเบา 1.12 กก. แบตยาว 15 ชม. เหมาะสำหรับสายทำงานจริงจัง",
+        "เครื่องเกมมิ่งระดับเริ่มต้นที่นิยมเยอะที่สุด เล่นเกมลื่นๆ ได้ เหมาะสำหรับ 1080p High-Ultra",
       specs: {
-        CPU: "Intel Core i7-1365U",
-        RAM: "16GB LPDDR5",
-        Storage: "512GB SSD",
-        Display: '14" 2.8K OLED',
+        CPU: "AMD Ryzen 5 7600",
+        RAM: "16GB DDR5",
+        GPU: "RTX 4060 8GB",
+        Storage: "512GB NVMe SSD",
       },
-      monthlyPrice: 2200,
-      buyPrice: 34900,
-      imageUrl: "/laptop.png",
+      monthlyPrice: 1990,
+      buyPrice: 35900,
+      imageUrl: "/gaming-desktop.png",
     },
   });
 
-  console.log(`✅ Products: ${macbook.name}, ${dellXps.name}, ${thinkpad.name}`);
+  console.log(`✅ Products: ${titan.name}, ${fury.name}, ${blaze.name}`);
 
   // ── 3. Create 5 equipment units ──
   const equipments = await Promise.all([
     prisma.equipment.create({
-      data: { productId: macbook.id, serialNumber: "MBP-M3-001", status: EquipmentStatus.AVAILABLE },
+      data: { productId: titan.id, serialNumber: "TITAN-001", status: EquipmentStatus.AVAILABLE },
     }),
     prisma.equipment.create({
-      data: { productId: macbook.id, serialNumber: "MBP-M3-002", status: EquipmentStatus.AVAILABLE },
+      data: { productId: titan.id, serialNumber: "TITAN-002", status: EquipmentStatus.AVAILABLE },
     }),
     prisma.equipment.create({
-      data: { productId: dellXps.id, serialNumber: "XPS15-001", status: EquipmentStatus.AVAILABLE },
+      data: { productId: fury.id, serialNumber: "FURY-001", status: EquipmentStatus.AVAILABLE },
     }),
     prisma.equipment.create({
-      data: { productId: dellXps.id, serialNumber: "XPS15-002", status: EquipmentStatus.AVAILABLE },
+      data: { productId: fury.id, serialNumber: "FURY-002", status: EquipmentStatus.AVAILABLE },
     }),
     prisma.equipment.create({
-      data: { productId: thinkpad.id, serialNumber: "TP-X1C-001", status: EquipmentStatus.AVAILABLE },
+      data: { productId: blaze.id, serialNumber: "BLAZE-001", status: EquipmentStatus.AVAILABLE },
     }),
   ]);
 

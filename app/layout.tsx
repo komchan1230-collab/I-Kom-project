@@ -21,8 +21,8 @@ export const metadata: Metadata = {
 };
 
 import { getSession } from "./actions/auth";
-
 import BottomNav from "./components/BottomNav";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 export default async function RootLayout({
   children,
@@ -37,10 +37,12 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Navbar session={session} />
-        <main className="flex-1 pb-20 md:pb-0">{children}</main>
-        <Footer />
-        <BottomNav />
+        <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
+          <Navbar session={session} />
+          <main className="flex-1 pb-20 md:pb-0">{children}</main>
+          <Footer />
+          <BottomNav />
+        </GoogleOAuthProvider>
       </body>
     </html>
   );

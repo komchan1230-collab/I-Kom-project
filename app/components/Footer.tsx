@@ -91,8 +91,8 @@ export default function Footer() {
             © 2026 I-Kom. สงวนลิขสิทธิ์ทุกประการ
           </p>
           <div className="flex items-center gap-4">
-            <a href="#" className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">นโยบายความเป็นส่วนตัว</a>
-            <a href="#" className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">เงื่อนไขการใช้งาน</a>
+            <Link href="/privacy" className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">นโยบายความเป็นส่วนตัว</Link>
+            <Link href="/terms" className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">เงื่อนไขการใช้งาน</Link>
           </div>
         </div>
       </div>

@@ -26,14 +26,14 @@ export default function ShopClient({ products, recommended }: { products: Mapped
     if (selectedCategory !== "all") {
       // Very basic mock categorization since DB doesn't have it.
       // We will just filter by name match for demonstration.
-      if (selectedCategory === "gaming") {
-        filtered = filtered.filter(p => p.name.toLowerCase().includes("gaming") || p.name.toLowerCase().includes("fury") || p.name.toLowerCase().includes("titan"));
-      } else if (selectedCategory === "workstation") {
-        filtered = filtered.filter(p => p.name.toLowerCase().includes("workstation") || p.name.toLowerCase().includes("creator"));
-      } else if (selectedCategory === "laptop") {
-        filtered = filtered.filter(p => p.name.toLowerCase().includes("laptop") || p.name.toLowerCase().includes("swift"));
-      } else if (selectedCategory === "office") {
-        filtered = filtered.filter(p => p.name.toLowerCase().includes("office") || p.name.toLowerCase().includes("lite"));
+      if (selectedCategory === "entry") {
+        filtered = filtered.filter(p => p.categoryLabel === "เริ่มต้น");
+      } else if (selectedCategory === "mid") {
+        filtered = filtered.filter(p => p.categoryLabel === "ระดับกลาง");
+      } else if (selectedCategory === "high") {
+        filtered = filtered.filter(p => p.categoryLabel === "ระดับไฮเอนด์");
+      } else if (selectedCategory === "streamer") {
+        filtered = filtered.filter(p => p.categoryLabel === "สตรีมเมอร์");
       }
     }
 
