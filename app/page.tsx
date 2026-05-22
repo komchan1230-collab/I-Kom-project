@@ -22,10 +22,18 @@ export default async function Home() {
 
   // Map database products
   const mappedProducts: MappedProduct[] = dbProducts.map(p => {
-    let categoryLabel = "คอมพิวเตอร์";
-    if (p.name.toLowerCase().includes("gaming")) categoryLabel = "เกมมิ่ง";
-    else if (p.name.toLowerCase().includes("workstation")) categoryLabel = "เวิร์คสเตชั่น";
-    else if (p.name.toLowerCase().includes("laptop")) categoryLabel = "แล็ปท็อป";
+    let categoryLabel = "ทั่วไป";
+    const nameLower = p.name.toLowerCase();
+    
+    if (nameLower.includes("titan") || nameLower.includes("high")) {
+      categoryLabel = "ระดับไฮเอนด์";
+    } else if (nameLower.includes("fury") || nameLower.includes("mid")) {
+      categoryLabel = "ระดับกลาง";
+    } else if (nameLower.includes("blaze") || nameLower.includes("entry")) {
+      categoryLabel = "เริ่มต้น";
+    } else if (nameLower.includes("stream") || nameLower.includes("master")) {
+      categoryLabel = "สตรีมเมอร์";
+    }
 
     const specsArray = typeof p.specs === "object" && p.specs !== null 
       ? Object.entries(p.specs).map(([k, v]) => `${k}: ${v}`) 
