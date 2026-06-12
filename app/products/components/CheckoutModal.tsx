@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { MappedProduct } from "./ProductCard";
 import { processRentalCheckout, processPurchaseCheckout } from "@/app/actions/checkout";
 import { formatPrice } from "@/app/components/ProductData";
+import { generatePromptPayQR } from "@/lib/promptpay";
 import Image from "next/image";
 
 interface CheckoutModalProps {
@@ -18,11 +19,34 @@ export default function CheckoutModal({ isOpen, onClose, product, mode }: Checko
   const [errorMessage, setErrorMessage] = useState("");
   const [slipPreview, setSlipPreview] = useState<string | null>(null);
   const [slipBase64, setSlipBase64] = useState<string | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
+  const [isAutoVerified, setIsAutoVerified] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen || !product) return null;
+  const price = product ? (mode === "rent" ? product.rentPrice : product.buyPrice) : 0;
 
-  const price = mode === "rent" ? product.rentPrice : product.buyPrice;
+  useEffect(() => {
+    if (isOpen && product && price > 0) {
+      const fetchQR = async () => {
+        setIsGeneratingQR(true);
+        try {
+          const qr = await generatePromptPayQR(price);
+          setQrCodeUrl(qr);
+        } catch (err) {
+          console.error("Failed to generate PromptPay QR:", err);
+        } finally {
+          setIsGeneratingQR(false);
+        }
+      };
+      fetchQR();
+    } else {
+      setQrCodeUrl(null);
+      setIsAutoVerified(false);
+    }
+  }, [isOpen, product, price]);
+
+  if (!isOpen || !product) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,6 +84,7 @@ export default function CheckoutModal({ isOpen, onClose, product, mode }: Checko
         });
 
         if (res.success) {
+          setIsAutoVerified(!!res.isAutoVerified);
           setStep("success");
         } else {
           setErrorMessage(res.error || "เกิดข้อผิดพลาดในการทำรายการ");
@@ -72,6 +97,7 @@ export default function CheckoutModal({ isOpen, onClose, product, mode }: Checko
         });
 
         if (res.success) {
+          setIsAutoVerified(!!res.isAutoVerified);
           setStep("success");
         } else {
           setErrorMessage(res.error || "เกิดข้อผิดพลาดในการทำรายการ");
@@ -90,6 +116,8 @@ export default function CheckoutModal({ isOpen, onClose, product, mode }: Checko
       setSlipPreview(null);
       setSlipBase64(null);
       setErrorMessage("");
+      setQrCodeUrl(null);
+      setIsAutoVerified(false);
     }, 300);
     onClose();
   };
@@ -161,6 +189,41 @@ export default function CheckoutModal({ isOpen, onClose, product, mode }: Checko
                 </div>
               </div>
 
+              {/* PromptPay QR Code Section */}
+              <div className="p-4 rounded-2xl bg-[#0f0f18]/60 border border-white/5 flex flex-col items-center text-center space-y-2.5">
+                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                  ชำระผ่าน PromptPay (สแกนเพื่อจ่าย)
+                </div>
+
+                {isGeneratingQR ? (
+                  <div className="w-36 h-36 rounded-2xl bg-black/40 flex items-center justify-center border border-white/5">
+                    <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : qrCodeUrl ? (
+                  <div className="relative p-2 bg-white rounded-xl shadow-lg border border-white/10 group overflow-hidden">
+                    <Image
+                      src={qrCodeUrl}
+                      alt="PromptPay QR Code"
+                      width={144}
+                      height={144}
+                      className="rounded-lg object-contain"
+                    />
+                    <div className="absolute inset-0 bg-cyan-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  </div>
+                ) : (
+                  <div className="w-36 h-36 rounded-2xl bg-black/40 flex items-center justify-center border border-white/5 text-xs text-red-400">
+                    ไม่สามารถสร้าง QR Code ได้
+                  </div>
+                )}
+
+                <div className="text-[10px] text-gray-400 font-medium">
+                  บัญชีผู้รับ: <span className="text-white">I-Kom Computer Co., Ltd.</span>
+                  <br />
+                  ยอดโอน: <span className="text-[var(--accent-cyan)] font-extrabold text-xs">฿{formatPrice(price)}</span>
+                </div>
+              </div>
+
               {/* Payment Slip Upload */}
               <div>
                 <label className="block text-sm font-semibold text-white mb-2">📎 อัปโหลดสลิปการชำระเงิน</label>
@@ -224,14 +287,28 @@ export default function CheckoutModal({ isOpen, onClose, product, mode }: Checko
               </div>
               <div>
                 <h3 className="text-xl font-bold text-white mb-2">
-                  {mode === "rent" ? "สร้างรายการเช่าสำเร็จ!" : "สร้างรายการสั่งซื้อสำเร็จ!"}
+                  {isAutoVerified
+                    ? mode === "rent" ? "รายการเช่าเปิดใช้งานแล้ว!" : "สั่งซื้อสินค้าเสร็จสมบูรณ์!"
+                    : mode === "rent" ? "สร้างรายการเช่าสำเร็จ!" : "สร้างรายการสั่งซื้อสำเร็จ!"}
                 </h3>
                 <p className="text-sm text-gray-400 px-4">
-                  กรุณารอการยืนยันจากผู้ดูแลระบบ เราจะแจ้งผลให้ทราบเร็วที่สุด
+                  {isAutoVerified
+                    ? "ระบบตรวจสอบความถูกต้องของสลิปชำระเงินเรียบร้อยแล้ว ออเดอร์ของท่านได้รับการอนุมัติอัตโนมัติ"
+                    : "กรุณารอการยืนยันจากผู้ดูแลระบบ เราจะแจ้งผลให้ทราบเร็วที่สุด"}
                 </p>
               </div>
-              <div className="w-full p-4 rounded-2xl bg-[var(--accent-blue)]/10 border border-[var(--accent-blue)]/20">
-                <p className="text-sm text-[var(--accent-blue)]">📋 สถานะ: รอผู้ดูแลระบบตรวจสอบสลิป</p>
+              <div className={`w-full p-4 rounded-2xl border ${
+                isAutoVerified
+                  ? "bg-green-500/10 border-green-500/20 text-green-400"
+                  : "bg-[var(--accent-blue)]/10 border-[var(--accent-blue)]/20 text-[var(--accent-blue)]"
+              }`}>
+                <p className="text-sm font-bold">
+                  {isAutoVerified
+                    ? mode === "rent"
+                      ? "📋 สถานะ: เปิดใช้งานอยู่ (Active) • ติดต่อรับสินค้าได้ทันที"
+                      : "📋 สถานะ: ชำระเงินสำเร็จ (Completed)"
+                    : "📋 สถานะ: รอผู้ดูแลระบบตรวจสอบสลิป"}
+                </p>
               </div>
               <button onClick={handleClose} className="px-8 py-3 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors font-semibold">ปิด</button>
             </div>

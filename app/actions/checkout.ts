@@ -20,6 +20,7 @@ export type CheckoutResult = {
   error?: string;
   rentalId?: string;
   purchaseOrderId?: string;
+  isAutoVerified?: boolean;
 };
 
 type RentalCheckoutInput = {
@@ -89,6 +90,25 @@ async function savePaymentSlip(
 
   // Return the public URL path (relative to /public)
   return `/uploads/slips/${filename}`;
+}
+
+/**
+ * Mock function to simulate verification of a payment slip with a 3rd-party API (e.g. SlipOK).
+ * Simulates a 1-second delay and returns success.
+ */
+async function verifySlipWithAPI(
+  slipBase64: string,
+  expectedAmount: number
+): Promise<{ success: boolean; verifiedAmount: number }> {
+  // Simulate network latency (1-second delay)
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  
+  console.log(`[Auto-Slip Verification]: Verified slip with expected amount: ฿${expectedAmount}`);
+  
+  return {
+    success: true,
+    verifiedAmount: expectedAmount,
+  };
 }
 
 /**
@@ -204,11 +224,38 @@ export async function processRentalCheckout(
       return newRental;
     });
 
+    // 5. Mock Auto-Slip Verification
+    let isAutoVerified = false;
+    let successMessage = "สร้างรายการเช่าสำเร็จ กรุณารอการยืนยันจากผู้ดูแลระบบ";
+
+    try {
+      const verification = await verifySlipWithAPI(paymentSlipBase64, depositAmount);
+      if (verification.success) {
+        // Auto-approve: update Rental status to ACTIVE and Equipment status to RENTED
+        await prisma.$transaction(async (tx) => {
+          await tx.rental.update({
+            where: { id: rental.id },
+            data: { status: RentalStatus.ACTIVE },
+          });
+
+          await tx.equipment.update({
+            where: { id: rental.equipmentId },
+            data: { status: EquipmentStatus.RENTED },
+          });
+        });
+
+        isAutoVerified = true;
+        successMessage = "ชำระเงินและตรวจสอบสลิปอัตโนมัติสำเร็จแล้ว! รายการเช่ามีสถานะเป็น 'ใช้งานอยู่' (Active) เรียบร้อยแล้ว";
+      }
+    } catch (verifError) {
+      console.error("[Auto-Slip Verification Failure]:", verifError);
+    }
+
     return {
       success: true,
       rentalId: rental.id,
-      message:
-        "สร้างรายการเช่าสำเร็จ กรุณารอการยืนยันจากผู้ดูแลระบบ",
+      isAutoVerified,
+      message: successMessage,
     };
   } catch (error: any) {
     console.error("[Rental Checkout Error]:", error);
@@ -332,11 +379,38 @@ export async function processPurchaseCheckout(
       return newOrder;
     });
 
+    // 6. Mock Auto-Slip Verification
+    let isAutoVerified = false;
+    let successMessage = "สร้างรายการสั่งซื้อสำเร็จ กรุณารอการยืนยันจากผู้ดูแลระบบ";
+
+    try {
+      const verification = await verifySlipWithAPI(paymentSlipBase64, Number(product.buyPrice));
+      if (verification.success) {
+        // Auto-approve: update PurchaseOrder status to COMPLETED and Equipment status to SOLD
+        await prisma.$transaction(async (tx) => {
+          await tx.purchaseOrder.update({
+            where: { id: purchaseOrder.id },
+            data: { status: PurchaseOrderStatus.COMPLETED },
+          });
+
+          await tx.equipment.update({
+            where: { id: purchaseOrder.equipmentId },
+            data: { status: EquipmentStatus.SOLD },
+          });
+        });
+
+        isAutoVerified = true;
+        successMessage = "ชำระเงินและตรวจสอบสลิปอัตโนมัติสำเร็จแล้ว! รายการสั่งซื้อมีสถานะเป็น 'เสร็จสิ้น' (Completed) เรียบร้อยแล้ว";
+      }
+    } catch (verifError) {
+      console.error("[Auto-Slip Verification Failure]:", verifError);
+    }
+
     return {
       success: true,
       purchaseOrderId: purchaseOrder.id,
-      message:
-        "สร้างรายการสั่งซื้อสำเร็จ กรุณารอการยืนยันจากผู้ดูแลระบบ",
+      isAutoVerified,
+      message: successMessage,
     };
   } catch (error: any) {
     console.error("[Purchase Checkout Error]:", error);

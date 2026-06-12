@@ -1,7 +1,7 @@
 export interface Product {
   id: string;
   name: string;
-  category: "gaming" | "laptop" | "office" | "workstation";
+  category: "gaming" | "laptop" | "office" | "workstation" | "entry" | "mid" | "high" | "streamer";
   categoryLabel: string;
   specs: string[];
   description: string;

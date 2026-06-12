@@ -37,8 +37,15 @@ const TOPIC_GROUPS = [
   { label: "📍 ร้าน", q: "ร้านอยู่ที่ไหน เปิดกี่โมง" },
 ];
 
-export default function ChatBot() {
-  const [isOpen, setIsOpen] = useState(false);
+interface ChatBotProps {
+  isOpen?: boolean;
+  onToggle?: () => void;
+}
+
+export default function ChatBot({ isOpen: propIsOpen, onToggle }: ChatBotProps = {}) {
+  const [localIsOpen, setLocalIsOpen] = useState(false);
+  const isOpen = propIsOpen !== undefined ? propIsOpen : localIsOpen;
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -95,8 +102,20 @@ export default function ChatBot() {
   };
 
   const handleOpen = () => {
-    setIsOpen(true);
     setHasNotif(false);
+    if (onToggle) {
+      if (!isOpen) onToggle();
+    } else {
+      setLocalIsOpen(true);
+    }
+  };
+
+  const handleClose = () => {
+    if (onToggle) {
+      if (isOpen) onToggle();
+    } else {
+      setLocalIsOpen(false);
+    }
   };
 
   return (
@@ -124,7 +143,7 @@ export default function ChatBot() {
               </div>
             </div>
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
               className="h-8 w-8 flex items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -255,7 +274,7 @@ export default function ChatBot() {
 
       {/* Toggle Button */}
       <button
-        onClick={isOpen ? () => setIsOpen(false) : handleOpen}
+        onClick={isOpen ? handleClose : handleOpen}
         className="pointer-events-auto h-16 w-16 bg-[var(--gradient-primary)] text-white rounded-[2rem] flex items-center justify-center shadow-2xl hover:scale-110 transition-all group relative border-4 border-white/10"
       >
         {isOpen ? (
