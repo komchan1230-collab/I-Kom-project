@@ -94,7 +94,7 @@ export default function ShopClient({ products, recommended }: { products: Mapped
                   <div key={product.id} className="relative group">
                     <div className="absolute -inset-1 bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-blue)] rounded-2xl blur opacity-20 group-hover:opacity-60 transition duration-500"></div>
                     <div className="relative h-full">
-                      <ProductCard product={product} mode={mode} onRentClick={handleRentClick} />
+                      <ProductCard product={product} mode={mode} onRentClick={handleRentClick} priority />
                     </div>
                   </div>
                 ))}
@@ -168,8 +168,8 @@ export default function ShopClient({ products, recommended }: { products: Mapped
         {/* Product Grid */}
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-            {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} mode={mode} onRentClick={handleRentClick} />
+            {filteredProducts.map((product, index) => (
+              <ProductCard key={product.id} product={product} mode={mode} onRentClick={handleRentClick} priority={index < 4} />
             ))}
           </div>
         ) : (

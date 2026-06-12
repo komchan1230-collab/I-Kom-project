@@ -4,23 +4,25 @@ import { EquipmentStatus } from "@prisma/client";
 import { MappedProduct } from "./components/ProductCard";
 
 export default async function ProductsPage() {
-  // Fetch all products with their available equipment count
-  const dbProducts = await prisma.product.findMany({
-    include: {
-      _count: {
-        select: {
-          equipment: {
-            where: { status: EquipmentStatus.AVAILABLE }
+  // Fetch both products and recommended list in parallel to eliminate request waterfall
+  const [dbProducts, rawRecommended] = await Promise.all([
+    prisma.product.findMany({
+      include: {
+        _count: {
+          select: {
+            equipment: {
+              where: { status: EquipmentStatus.AVAILABLE }
+            }
           }
         }
-      }
-    },
-    orderBy: { createdAt: "desc" }
-  });
-
-  // Fetch recommended products
-  const { getRecommendedProducts } = await import("@/app/actions/recommendation");
-  const rawRecommended = await getRecommendedProducts();
+      },
+      orderBy: { createdAt: "desc" }
+    }),
+    (async () => {
+      const { getRecommendedProducts } = await import("@/app/actions/recommendation");
+      return getRecommendedProducts();
+    })()
+  ]);
 
   // Helper to map DB product to UI product
   const mapProduct = (p: any): MappedProduct => {

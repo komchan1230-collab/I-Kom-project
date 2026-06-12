@@ -23,17 +23,20 @@ interface ProductCardProps {
   product: MappedProduct;
   mode: "buy" | "rent";
   onRentClick?: (product: MappedProduct) => void;
+  priority?: boolean;
 }
 
-export default function ProductCard({ product, mode, onRentClick }: ProductCardProps) {
+export default function ProductCard({ product, mode, onRentClick, priority = false }: ProductCardProps) {
   return (
     <div className="group relative rounded-3xl overflow-hidden glass card-hover neon-border flex flex-col h-full sm:aspect-auto aspect-[4/5] bg-black">
       {/* Full Bleed Image */}
-      <div className="absolute inset-0 w-full h-full">
+      <div className="absolute inset-0 w-full h-full bg-neutral-900/50">
         <Image
           src={product.image}
           alt={product.name}
           fill
+          priority={priority}
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           className="object-cover sm:object-contain transition-transform duration-700 group-hover:scale-110 opacity-80 group-hover:opacity-100"
         />
         {/* Gradients for readability */}

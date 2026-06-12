@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { generateAIResponse, quickQuestions, ChatContext } from "./AIEngine";
+import { generateAIResponse } from "./AIEngine";
 import Image from "next/image";
 
 type Message = {
@@ -10,6 +10,19 @@ type Message = {
   content: string;
   products?: any[];
 };
+
+const quickQuestions = [
+  "แนะนำคอมเล่นเกม งบ 30,000",
+  "โน๊ตบุ๊คทำงาน น้ำหนักเบา",
+  "อยากเช่าคอมรายเดือน",
+  "คอมสำหรับตัดต่อวิดีโอ 4K",
+  "สอบถามเรื่องการรับประกัน",
+  "ที่ร้านมีผ่อน 0% ไหม?",
+  "เปรียบเทียบ RTX 4060 กับ 4070",
+  "คอมนักศึกษางบ 20,000",
+  "เช่าระยะสั้น 1 เดือนได้ไหม?",
+  "ร้านอยู่ที่ไหน เปิดกี่โมง",
+];
 
 const TOPIC_GROUPS = [
   { label: "🎮 เกม", q: "แนะนำคอมเล่นเกม งบ 30,000" },
@@ -35,8 +48,7 @@ export default function ChatBot() {
     },
   ]);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [context, setContext] = useState<ChatContext>({ turnCount: 0 });
+  const [isLoading, setIsLoading] = useState(false);
   const [hasNotif, setHasNotif] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -44,10 +56,10 @@ export default function ChatBot() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isTyping]);
+  }, [messages, isLoading]);
 
-  const handleSend = async (text: string) => {
-    if (!text.trim()) return;
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -55,28 +67,31 @@ export default function ChatBot() {
       content: text,
     };
 
+    // Show user message immediately and clear input
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
-    setIsTyping(true);
+    setIsLoading(true);
 
-    setTimeout(() => {
-      const response = generateAIResponse(text, context);
+    try {
+      // Call the Server Action
+      const responseText = await generateAIResponse(text);
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "ai",
-        content: response.text,
-        products: response.products,
+        content: responseText,
       };
       setMessages((prev) => [...prev, aiMsg]);
-      setIsTyping(false);
-      if (response.newContext) {
-        setContext((prev) => ({
-          ...prev,
-          ...response.newContext,
-          turnCount: prev.turnCount + 1,
-        }));
-      }
-    }, 700);
+    } catch (error) {
+      console.error("[ChatBot Error]:", error);
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "ai",
+        content: "ขออภัยด้วยครับคุณลูกค้า 😅 ขณะนี้ระบบตอบคำถามขัดข้องชั่วคราว คุณลูกค้าสามารถลองใหม่อีกครั้ง หรือสอบถามข้อมูลเพิ่มเติมผ่านทาง LINE: @ikom-computer ได้เลยครับ!",
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleOpen = () => {
@@ -123,8 +138,9 @@ export default function ChatBot() {
             {TOPIC_GROUPS.map((t) => (
               <button
                 key={t.label}
-                onClick={() => handleSend(t.q)}
-                className="whitespace-nowrap px-3 py-1.5 bg-white/5 hover:bg-[var(--accent-blue)] text-white text-[10px] font-black rounded-lg border border-white/10 transition-all uppercase tracking-tighter flex-shrink-0"
+                onClick={() => handleSendMessage(t.q)}
+                disabled={isLoading}
+                className="whitespace-nowrap px-3 py-1.5 bg-white/5 hover:bg-[var(--accent-blue)] text-white text-[10px] font-black rounded-lg border border-white/10 transition-all uppercase tracking-tighter flex-shrink-0 disabled:opacity-50"
               >
                 {t.label}
               </button>
@@ -181,12 +197,12 @@ export default function ChatBot() {
               </div>
             ))}
 
-            {isTyping && (
+            {isLoading && (
               <div className="flex justify-start">
                 <div className="h-7 w-7 bg-[var(--gradient-primary)] rounded-xl flex items-center justify-center flex-shrink-0 mr-2">
                   <span className="text-xs">🤖</span>
                 </div>
-                <div className="glass rounded-2xl rounded-tl-none p-4 flex gap-1 items-center border-white/5">
+                <div className="glass rounded-2xl rounded-tl-none p-4 flex gap-1.5 items-center border-white/5">
                   <span className="typing-dot"></span>
                   <span className="typing-dot"></span>
                   <span className="typing-dot"></span>
@@ -200,8 +216,9 @@ export default function ChatBot() {
             {quickQuestions.slice(0, 5).map((q) => (
               <button
                 key={q}
-                onClick={() => handleSend(q)}
-                className="whitespace-nowrap px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white/70 text-[9px] font-bold rounded-lg border border-white/5 transition-all flex-shrink-0"
+                onClick={() => handleSendMessage(q)}
+                disabled={isLoading}
+                className="whitespace-nowrap px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white/70 text-[9px] font-bold rounded-lg border border-white/5 transition-all flex-shrink-0 disabled:opacity-50"
               >
                 {q}
               </button>
@@ -215,21 +232,23 @@ export default function ChatBot() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSend(input)}
-                placeholder="ถามอะไรก็ได้เกี่ยวกับคอมพิวเตอร์..."
-                className="flex-1 bg-transparent border-none outline-none px-3 text-sm text-white font-medium placeholder:text-white/30"
+                onKeyDown={(e) => e.key === "Enter" && handleSendMessage(input)}
+                placeholder={isLoading ? "กำลังประมวลผลคำตอบ..." : "ถามอะไรก็ได้เกี่ยวกับคอมพิวเตอร์..."}
+                disabled={isLoading}
+                className="flex-1 bg-transparent border-none outline-none px-3 text-sm text-white font-medium placeholder:text-white/30 disabled:opacity-50"
               />
               <button
-                onClick={() => handleSend(input)}
-                disabled={!input.trim()}
-                className="h-9 w-9 bg-[var(--accent-blue)] text-white rounded-xl flex items-center justify-center hover:opacity-90 disabled:opacity-40 transition-all shadow-lg shadow-blue-500/20"
+                onClick={() => handleSendMessage(input)}
+                disabled={!input.trim() || isLoading}
+                aria-label="Send message"
+                className="h-9 w-9 bg-[var(--accent-blue)] text-white rounded-xl flex items-center justify-center hover:opacity-90 disabled:opacity-40 transition-all shadow-lg shadow-blue-500/20 flex-shrink-0"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
               </button>
             </div>
-            <p className="text-center text-white/20 text-[9px] mt-1.5 font-medium">AI ให้ข้อมูลเบื้องต้น • ยืนยันกับพนักงานก่อนตัดสินใจ</p>
+            <p className="text-center text-gray-400 text-[9px] mt-1.5 font-medium">AI ให้ข้อมูลเบื้องต้น • ยืนยันกับพนักงานก่อนตัดสินใจ</p>
           </div>
         </div>
       )}

@@ -18,10 +18,18 @@ export async function createRentalBooking(data: BookingRequest) {
   try {
     const { userId, productId, startDate, endDate, depositAmount } = data;
 
+    // 1. Resolve session and auth module outside transaction to minimize transaction locks
+    const { getSession } = await import("./auth");
+    const session = await getSession();
+    
+    if (!session) {
+      throw new Error("UNAUTHORIZED: กรุณาเข้าสู่ระบบก่อนทำการจอง");
+    }
+
     // We use a Prisma interactive transaction to ensure atomicity
     const result = await prisma.$transaction(async (tx) => {
       
-      // 1. Find an available equipment unit for the requested product
+      // 2. Find an available equipment unit for the requested product
       const availableEquipment = await tx.equipment.findFirst({
         where: {
           productId: productId,
@@ -30,12 +38,11 @@ export async function createRentalBooking(data: BookingRequest) {
       });
 
       if (!availableEquipment) {
-        throw new Error("OUT_OF_STOCK: No available equipment found for this product at the moment.");
+        throw new Error("OUT_OF_STOCK: ไม่มีคอมพิวเตอร์ที่พร้อมใช้งานในระบบขณะนี้");
       }
 
-      // 2. Attempt to lock the equipment by updating its status to RESERVED.
+      // 3. Attempt to lock the equipment by updating its status to RESERVED.
       // We include `status: EquipmentStatus.AVAILABLE` in the where clause as an optimistic concurrency lock.
-      // If another user books this exact unit milliseconds before, the update count will be 0.
       const lockResult = await tx.equipment.updateMany({
         where: {
           id: availableEquipment.id,
@@ -47,24 +54,16 @@ export async function createRentalBooking(data: BookingRequest) {
       });
 
       if (lockResult.count === 0) {
-        throw new Error("CONCURRENCY_CONFLICT: The unit was just booked by someone else. Please try again.");
+        throw new Error("CONCURRENCY_CONFLICT: อุปกรณ์เพิ่งถูกจองโดยผู้ใช้อื่น กรุณาลองใหม่อีกครั้ง");
       }
 
-      // 2.5 Get the logged in user's session
-      const { getSession } = await import("./auth");
-      const session = await getSession();
-      
-      if (!session) {
-        throw new Error("UNAUTHORIZED: กรุณาเข้าสู่ระบบก่อนทำการจอง");
-      }
-
-      // Check if user actually exists in DB to be safe
+      // 4. Check if user actually exists in DB to be safe
       const user = await tx.user.findUnique({ where: { id: session.userId } });
       if (!user) {
         throw new Error("UNAUTHORIZED: ไม่พบข้อมูลผู้ใช้ในระบบ");
       }
 
-      // 3. Create the pending rental record
+      // 5. Create the pending rental record
       const rental = await tx.rental.create({
         data: {
           userId: user.id, // Use valid DB user ID
@@ -87,9 +86,17 @@ export async function createRentalBooking(data: BookingRequest) {
 
   } catch (error: any) {
     console.error("[Rental Booking Action Error]:", error);
+    
+    // Sanitize and return client-safe errors, preventing raw database engine details from leaking
+    const isClientSafe = error.message && (
+      error.message.startsWith("OUT_OF_STOCK:") ||
+      error.message.startsWith("CONCURRENCY_CONFLICT:") ||
+      error.message.startsWith("UNAUTHORIZED:")
+    );
+    
     return { 
       success: false, 
-      error: error.message || "An unexpected error occurred during booking." 
+      error: isClientSafe ? error.message.split(": ")[1] : "เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่อีกครั้ง" 
     };
   }
 }

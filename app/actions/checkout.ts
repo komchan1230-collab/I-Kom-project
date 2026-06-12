@@ -47,18 +47,35 @@ async function savePaymentSlip(
   base64Data: string,
   prefix: string
 ): Promise<string> {
-  // Strip the data URI prefix if present (e.g. "data:image/png;base64,")
+  // 1. DoS Protection: Limit payload size strictly (5MB limit in base64 char length is approx 7.18 million characters)
+  const MAX_BASE64_LENGTH = 5 * 1024 * 1024 * 1.37;
+  if (base64Data.length > MAX_BASE64_LENGTH) {
+    throw new Error("FILE_TOO_LARGE: ขนาดไฟล์ต้องไม่เกิน 5MB");
+  }
+
+  // Strip the data URI prefix if present
   const base64Content = base64Data.includes(",")
     ? base64Data.split(",")[1]
     : base64Data;
 
   const buffer = Buffer.from(base64Content, "base64");
 
-  // Determine file extension from data URI header, default to png
+  // 2. Security / XSS Protection: Strictly validate MIME type to safe image formats
   let extension = "png";
   const mimeMatch = base64Data.match(/data:image\/(\w+);base64/);
   if (mimeMatch) {
-    extension = mimeMatch[1] === "jpeg" ? "jpg" : mimeMatch[1];
+    const mimeType = mimeMatch[1].toLowerCase();
+    if (mimeType === "jpeg" || mimeType === "jpg") {
+      extension = "jpg";
+    } else if (mimeType === "png") {
+      extension = "png";
+    } else if (mimeType === "webp") {
+      extension = "webp";
+    } else {
+      throw new Error("INVALID_FILE_TYPE: รูปแบบไฟล์ไม่ถูกต้อง อัปโหลดได้เฉพาะรูปภาพ JPEG, PNG, WEBP");
+    }
+  } else {
+    throw new Error("INVALID_FILE_TYPE: รูปแบบไฟล์ไม่ถูกต้อง");
   }
 
   const filename = `${prefix}_${Date.now()}.${extension}`;
@@ -195,10 +212,19 @@ export async function processRentalCheckout(
     };
   } catch (error: any) {
     console.error("[Rental Checkout Error]:", error);
+
+    // Sanitize error messages returned to the client to avoid leaking database schema/Prisma errors
+    const isClientSafe = error.message && (
+      error.message.startsWith("OUT_OF_STOCK:") ||
+      error.message.startsWith("CONCURRENCY_CONFLICT:") ||
+      error.message.startsWith("UNAUTHORIZED:") ||
+      error.message.startsWith("FILE_TOO_LARGE:") ||
+      error.message.startsWith("INVALID_FILE_TYPE:")
+    );
+
     return {
       success: false,
-      error:
-        error.message || "เกิดข้อผิดพลาดในการทำรายการเช่า",
+      error: isClientSafe ? error.message.split(": ")[1] : "เกิดข้อผิดพลาดในการทำรายการเช่า กรุณาลองใหม่อีกครั้ง",
     };
   }
 }
@@ -237,6 +263,15 @@ export async function processPurchaseCheckout(
       return { success: false, error: "กรุณาอัปโหลดสลิปการชำระเงิน" };
     }
 
+    // 1. Get the product to determine the price BEFORE entering transaction (optimizes DB lock times)
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new Error("PRODUCT_NOT_FOUND: ไม่พบสินค้าที่ระบุ");
+    }
+
     // Save the payment slip file before entering the transaction
     const paymentSlipUrl = await savePaymentSlip(
       paymentSlipBase64,
@@ -245,15 +280,6 @@ export async function processPurchaseCheckout(
 
     // -- Atomic database transaction --
     const purchaseOrder = await prisma.$transaction(async (tx) => {
-      // 1. Get the product to determine the price
-      const product = await tx.product.findUnique({
-        where: { id: productId },
-      });
-
-      if (!product) {
-        throw new Error("PRODUCT_NOT_FOUND: ไม่พบสินค้าที่ระบุ");
-      }
-
       // 2. Find an available equipment unit for the product
       const availableEquipment = await tx.equipment.findFirst({
         where: {
@@ -314,10 +340,20 @@ export async function processPurchaseCheckout(
     };
   } catch (error: any) {
     console.error("[Purchase Checkout Error]:", error);
+
+    // Sanitize error messages returned to the client to avoid leaking database schema/Prisma errors
+    const isClientSafe = error.message && (
+      error.message.startsWith("PRODUCT_NOT_FOUND:") ||
+      error.message.startsWith("OUT_OF_STOCK:") ||
+      error.message.startsWith("CONCURRENCY_CONFLICT:") ||
+      error.message.startsWith("UNAUTHORIZED:") ||
+      error.message.startsWith("FILE_TOO_LARGE:") ||
+      error.message.startsWith("INVALID_FILE_TYPE:")
+    );
+
     return {
       success: false,
-      error:
-        error.message || "เกิดข้อผิดพลาดในการทำรายการซื้อ",
+      error: isClientSafe ? error.message.split(": ")[1] : "เกิดข้อผิดพลาดในการทำรายการซื้อ กรุณาลองใหม่อีกครั้ง",
     };
   }
 }
